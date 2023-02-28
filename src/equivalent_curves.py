@@ -4,7 +4,7 @@ This module contains standard heating regimes used for time equivalence
 
 import numpy as np
 
-class GenericRegime:
+class GenericCurve:
     """Generic class"""
 
     def __init__(self):
@@ -18,7 +18,7 @@ class GenericRegime:
         raise NotImplemented
 
 
-class StandardFire(GenericRegime):
+class StandardFire(GenericCurve):
     """Standard fire curve"""
 
     def __init__(self):
