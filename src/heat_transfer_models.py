@@ -162,7 +162,56 @@ class SteelEC3(GenericHT):
 
         return debug_results
 
-    def calc_thermal_response(self, exposure):
+    def calc_thermal_response(self, equiv_exp, exposure_fxn, t_final, sample_size):
+        """Calculates the thermal response of the sample section against an array of design fires representative
+        of a single exposure regime
+
+        Inputs:
+            exposure_fxn(method): exposure function defining the gas temperature at different points in time. It must
+            be of the form f(t, *args) where t is the time. Return value to be in (degC)
+            equiv_exp (float): equivalent exposure rating used to calculate appropriate protection thickness
+            t_final (float): end analysis time
+            sample_size (int): sample size - IT MIGHT BE REMOVED
+
+        Returns
+            max_temps (array like) - array of max temperatures"""
+
+
+        # Get some properties
+        c_p = self.prot_prop['c']
+        k_p = self.prot_prop['k']
+        ro_p = self.prot_prop['ro']
+        A_v = self.sect_prop['A_v']
+
+        # Get array of protection thicknesses
+        d_p = self.equiv_prot_interp(equiv_exp)
+
+        times = np.arange(0, 60*t_final, self.dt)
+
+        # Create initial temperature array equal to ambient of same shape
+        T_m = np.full((1, sample_size), self.T_amb, dtype=np.float64)
+
+        # Holder for results
+        all_temps = np.full((len(times), sample_size), -1, dtype=np.float64)
+
+        for i, t in enumerate(times):
+            all_temps[i, :] = T_m
+
+            c_a = SteelEC3._calc_steel_hc(T_m)
+            ro_a = SteelEC3._calc_steel_dens()
+
+            T_g = exposure_fxn(t+self.dt, sample_size)
+            T_g_prev= exposure_fxn(t, sample_size)
+
+            fi = c_p * ro_p * d_p * A_v / (c_a * ro_a)
+
+            dT = k_p * A_v * (T_g - T_m) * self.dt / ((d_p * c_a * ro_a) * (1 + fi / 3)) - (np.exp(fi/10)-1)*(T_g - T_g_prev)
+            #Some conditions can be applied here for early stop
+
+            T_m = T_m + dT
+            T_m[T_m < self.T_amb] = self.T_amb  # Temperature cannot go below ambient. TO BE CHECKED
+
+        return all_temps
 
 
 
