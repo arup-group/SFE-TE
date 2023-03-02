@@ -148,7 +148,7 @@ class SteelEC3(GenericHT):
             f = interp1d(all_temps[:, i], times)
             try:
                 self.equiv_prot_req_data[i, 1] = f(self.T_lim)/60
-            except ValueError:
+            except ValueError: # in case limiting temperature is not reached
                 self.equiv_prot_req_data[i, 1] = -1
 
         # remove rows where limiting temperature was not reached
@@ -164,7 +164,7 @@ class SteelEC3(GenericHT):
 
     def calc_thermal_response(self, equiv_exp, exposure_fxn, t_final, sample_size):
         """Calculates the thermal response of the sample section against an array of design fires representative
-        of a single exposure regime
+        of a single exposure regime. INTEGRATION TEST REQUIRED
 
         Inputs:
             exposure_fxn(method): exposure function defining the gas temperature at different points in time. It must
