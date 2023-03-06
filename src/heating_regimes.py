@@ -60,12 +60,11 @@ class FlashEC1(GenericRegime):
         self._calc_t_max_fuel()  # Calc t_max for fuel control fire
         self._calc_open_factor_fuel() # Calc open factor for fuel controlled - Of lim
         self._calc_GA_lim_factor()  # Calc GA_lim
-        self._calc_GA_min_k_mod()  # Calc k factor for GA_lim
+        self._calc_GA_lim_k_mod()  # Calc k factor for GA_lim
         self._define_burning_regime()
         self._calc_max_temp_time()
         self._calc_t_star_max()
         self._calc_max_temp()
-
 
 
     def _calc_comp_sides(self):
@@ -90,7 +89,7 @@ class FlashEC1(GenericRegime):
         self.params['Of_max'] = self.params['A_v']*np.sqrt(self.params['h_w_eq'])/self.params['A_t']
 
     def _calc_open_factor_breakage(self):
-        """Refer to TGN B4.5.3 and JCSS - 2 Clause 2.20.4.1"""
+        """Refer to TGN B4.5.3 and JCSS - 2 Clause 2.20.4.1. UNIT TEST"""
         self.params['Of'] = self.params['Of_max']*(1 - self.params['remain_frac'])
 
     def _apply_open_factor_limits(self):
@@ -119,7 +118,7 @@ class FlashEC1(GenericRegime):
         """See BS EN 1993-1-2 A.8 UNIT TEST REQUIRED"""
         self.params['GA_lim'] = ((self.params['Of_lim']/self.params['fabr_inrt'])/(0.04/1160))**2
 
-    def _calc_GA_min_k_mod(self):
+    def _calc_GA_lim_k_mod(self):
         """See BS EN 1993-1-2 A.10 UNIT TEST REQUIRED"""
         self.params['k'] = np.ones_like(self.params['GA_lim'])
         #Apply criteria from BS EN 1991-1-2 A.9
@@ -135,20 +134,27 @@ class FlashEC1(GenericRegime):
         self.params['t_max_fuel'] = self.params['t_lim']/60
 
     def _define_burning_regime(self):
+        """Decides whether burning regime is ventilation or fuel controlled, UNIT TEST REQUIRED"""
         self.params['regime'] = np.full(len(self.params['A_c']), 'V')
         self.params['regime'][self.params['t_max_fuel'] > self.params['t_max_vent']] = 'F'
 
     def _calc_max_temp_time(self):
+        """Returns maximum time based from the two regimes. See BS EN 1991-1-2 A.7"""
         self.params['max_temp_t'] = np.max([self.params['t_max_fuel'], self.params['t_max_vent']], axis=0)
 
     def _calc_t_star_max(self):
+        """Calculates t star max. UNIT TEST REQUIRED"""
         crit = self.params['regime'] == 'V'
-        self.params['t_str_max'] = np.full(len(self.params['A_c']), -1, dtype=np.float64)
-        self.params['t_str_max'][crit] = self.params['max_temp_t'][crit] * self.params['GA'][crit]
-        self.params['t_str_max'][~crit] = self.params['max_temp_t'][~crit] * self.params['GA_lim'][~crit]
+        self.params['t_str_max_heat'] = np.full(len(self.params['A_c']), -1, dtype=np.float64)
+        self.params['t_str_max_heat'][crit] = self.params['max_temp_t'][crit] * self.params['GA'][crit]
+        self.params['t_str_max_heat'][~crit] = self.params['max_temp_t'][~crit] * self.params['GA_lim'][~crit]
+
+        #Create t_str_max_cool for the cooling phase. See BS EN 1991-1-2 A.12
+        self.params['t_str_max_cool_fuel'] = self.params['t_max_fuel'] * self.params['GA']
+        self.params['t_str_max_cool_vent'] = self.params['t_max_vent'] * self.params['GA']
 
 
-    def _calc_heat_phase_temp(self, t_str):
+    def _calc_heat_phase_temp(self, t_str_heat):
         """Calculates a heating phase temperature for input effective time according to BS EN 1993-1-2 A.1
         UNIT TEST REQUIRED
         Inputs:
@@ -156,10 +162,75 @@ class FlashEC1(GenericRegime):
         Returns
             T (array like) - Gas temperature in [degC] """
 
-        return 20 + 1325 * (1 - 0.324 * np.exp(-0.2 * t_str) - 0.204 * np.exp(-1.7 * t_str) - 0.472 * np.exp(-19 * t_str))
+        return 20 + 1325 * (1 - 0.324 * np.exp(-0.2 * t_str_heat) - 0.204 * np.exp(-1.7 * t_str_heat) - 0.472 * np.exp(-19 * t_str_heat))
 
     def _calc_max_temp(self):
-        self.params['max_temp'] = self._calc_heat_phase_temp(self.params['t_str_max'])
+        """Calculates max temp based on t star max using BS EN 1993-1-2 A.1
+        UNIT TEST REQUIRED"""
+        self.params['max_temp'] = self._calc_heat_phase_temp(self.params['t_str_max_heat'])
+
+    def _calc_burnout(self):
+        """Calculates burnout time based on the input parameters"""
+        pass
+
+    def _calc_cooling_phase_temp(self, t):
+        """Calculates cooling phase temperatures in accordance with BS EN 1991-1-2 Annex A (11)
+
+        Inputs:
+            t (array like): time vector in [min - TBC]
+        Returns:
+            Array of temperatures for particular times in [degC]"""
+
+        cool_temp = np.full(len(self.params['A_c']), -1, dtype=np.float64)
+        t_str_cool = self.params['GA']*t/60
+
+        crit = (self.params['t_str_max_cool_vent'] <= 0.5) & (self.params['regime'] == 'V')
+        cool_temp[crit] = self.params['max_temp'][crit] - 625 * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
+        crit = (self.params['t_str_max_cool_vent'] <= 0.5) & (self.params['regime'] == 'F')
+        cool_temp[crit] = self.params['max_temp'][crit] - 625 * (t_str_cool[crit] - self.params['t_str_max_cool_fuel'][crit])
+
+        crit = (self.params['t_str_max_cool_vent'] > 0.5) & (self.params['t_str_max_cool_vent'] < 2) & (self.params['regime'] == 'V')
+        cool_temp[crit] = self.params['max_temp'][crit] - 250 * (3 - self.params['t_str_max_cool_vent'][crit]) * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
+        crit = (self.params['t_str_max_cool_vent'] > 0.5) & (self.params['t_str_max_cool_vent'] < 2) & (self.params['regime'] == 'F')
+        cool_temp[crit] = self.params['max_temp'][crit] - 250 * (3 - self.params['t_str_max_cool_vent'][crit]) * (t_str_cool[crit] - self.params['t_str_max_cool_fuel'][crit])
+
+        crit = (self.params['t_str_max_cool_vent'] >= 2) & (self.params['regime'] == 'V')
+        cool_temp[crit] = self.params['max_temp'][crit] - 250 * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
+        crit = (self.params['t_str_max_cool_vent'] >= 2) & (self.params['regime'] == 'F')
+        cool_temp[crit] = self.params['max_temp'][crit] - 250 * (t_str_cool[crit] - self.params['t_str_max_cool_fuel'][crit])
+
+        #Temperature cannot go below ambient
+        cool_temp[cool_temp < 20] = 20
+
+        return cool_temp
+
+    def get_exposure(self, t):
+        """Produce a vector of exposure temperatures at specific t. UNIT TEST REQUIRED"""
+
+        t_str_heat = np.full(len(self.params['A_c']), -1, dtype=np.float64)
+
+        # Calculate t_str_heat based on fire regime:
+        crit = self.params['regime'] == 'V'
+        t_str_heat[crit] = self.params['GA'][crit] * t/60
+        crit = self.params['regime'] == 'F'
+        t_str_heat[crit] = self.params['GA_lim'] [crit] * t/60
+
+        #Calculate heating and colling temperatures. These are compared to avoid discontinuities
+        # The logic is that if t_str is smaller than t_max_str the resulting temp will allways be bigger
+        #than temp max calculated from the heating phase Similar approach is implemented in the SFE toolkit
+        heat_phase_temp = self._calc_heat_phase_temp(t_str_heat)
+        cool_phase_temp = self._calc_cooling_phase_temp(t)
+
+        return np.min([heat_phase_temp, cool_phase_temp], axis=0)
+
+    def get_time_temperature_curves(self, t_values):
+        """Get time temperature curves"""
+
+        # TODO Rewrite this to allow for subsampling and get_exposure method to allow subsampling
+        curve_data = np.full((len(t_values), len(self.params['A_c'])), -1, dtype=np.float64)
+        for i, t in enumerate(t_values):
+            curve_data[i, :] = self.get_exposure(t)
+        return curve_data
 
 
     def summarise_parameters(self):
@@ -167,10 +238,7 @@ class FlashEC1(GenericRegime):
         data = pd.DataFrame.from_dict(self.params)
         col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac', 'remain_frac',
                     'A_v', 'Of_max', 'Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_max_vent', 't_lim', 't_max_fuel',
-                    'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 't_str_max','max_temp']
+                    'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 't_str_max_heat', 't_str_max_cool_vent', 't_str_max_cool_fuel',
+                    'max_temp']
         data = data[col_list]
         return data
-
-
-
-
