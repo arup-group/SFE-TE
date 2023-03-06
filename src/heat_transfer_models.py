@@ -1,7 +1,10 @@
+try:
+    import equivalent_curves as ecr
+except ModuleNotFoundError:
+    import src.equivalent_curves as ecr
 import numpy as np
 from scipy.interpolate import interp1d
 
-import equivalent_curves as ecr
 
 
 class GenericHT():
