@@ -18,14 +18,20 @@ class TestFlashEC1(unittest.TestCase):
             't_lim': np.array([15,20]),
             'foo': np.array([432,53]),
             'fabr_inrt' : np.array([1000,1000])}
+        crit_value = 100
 
-        self.parametric = hr.FlashEC1(design_fire_inputs=inputs, crit_value=100)
+        self.parametric = hr.FlashEC1(design_fire_inputs=inputs, crit_value=crit_value)
 
 
     def test_perform_initial_calculations(self):
         self.parametric.perform_initial_calculations()
-        expected_result = np.array([14.142, 7.746])
+
+        # Test c_long calculation
+        expected_result = np.array([14.142, 7.747])
         npt.assert_almost_equal(self.parametric.params['c_long'], expected_result, decimal = 3)
+
+        # Test some other calculation
+
 
 
 if __name__ == '-__name__':

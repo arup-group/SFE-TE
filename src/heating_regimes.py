@@ -67,10 +67,11 @@ class FlashEC1(GenericRegime):
         self._calc_open_factor_fuel() # Calc open factor for fuel controlled - Of lim
         self._calc_GA_lim_factor()  # Calc GA_lim
         self._calc_GA_lim_k_mod()  # Calc k factor for GA_lim
-        self._define_burning_regime() #Defiens whether it is ventilation control or fuel control fire
-        self._calc_max_temp_time() # Calculates the time of max temperature
-        self._calc_t_star_max() # Calculates t star helping parameters
-        self._calc_max_temp() # calculates max temperature
+        self._define_burning_regime()  # Defines whether it is ventilation control or fuel control fire
+        self._calc_max_temp_time()  # Calculates the time of max temperature
+        self._calc_t_star_max()  # Calculates t star helping parameters
+        self._calc_max_temp()  # calculates max temperature
+        self._calc_fire_duration()  # Calculates burnout in [min]
 
 
     def _calc_comp_sides(self):
@@ -167,6 +168,7 @@ class FlashEC1(GenericRegime):
             t_str (array_like) - effective time calculated according to BS EN 1993-1-2 Anenx A
         Returns
             T (array like) - Gas temperature in [degC] """
+        #TODO coordinate time units
 
         return 20 + 1325 * (1 - 0.324 * np.exp(-0.2 * t_str_heat) - 0.204 * np.exp(-1.7 * t_str_heat) - 0.472 * np.exp(-19 * t_str_heat))
 
@@ -186,20 +188,22 @@ class FlashEC1(GenericRegime):
             t (array like): time vector in [min - TBC]
         Returns:
             Array of temperatures for particular times in [degC]"""
+        #TODO coordinate time units
 
         cool_temp = np.full(len(self.params['A_c']), -1, dtype=np.float64)
         t_str_cool = self.params['GA']*t/60
 
+        # Case A.11a
         crit = (self.params['t_str_max_cool_vent'] <= 0.5) & (self.params['regime'] == 'V')
         cool_temp[crit] = self.params['max_temp'][crit] - 625 * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
         crit = (self.params['t_str_max_cool_vent'] <= 0.5) & (self.params['regime'] == 'F')
         cool_temp[crit] = self.params['max_temp'][crit] - 625 * (t_str_cool[crit] - self.params['t_str_max_cool_fuel'][crit])
-
+        # Case A.11b
         crit = (self.params['t_str_max_cool_vent'] > 0.5) & (self.params['t_str_max_cool_vent'] < 2) & (self.params['regime'] == 'V')
         cool_temp[crit] = self.params['max_temp'][crit] - 250 * (3 - self.params['t_str_max_cool_vent'][crit]) * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
         crit = (self.params['t_str_max_cool_vent'] > 0.5) & (self.params['t_str_max_cool_vent'] < 2) & (self.params['regime'] == 'F')
         cool_temp[crit] = self.params['max_temp'][crit] - 250 * (3 - self.params['t_str_max_cool_vent'][crit]) * (t_str_cool[crit] - self.params['t_str_max_cool_fuel'][crit])
-
+        # Case A.11c
         crit = (self.params['t_str_max_cool_vent'] >= 2) & (self.params['regime'] == 'V')
         cool_temp[crit] = self.params['max_temp'][crit] - 250 * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
         crit = (self.params['t_str_max_cool_vent'] >= 2) & (self.params['regime'] == 'F')
@@ -209,6 +213,30 @@ class FlashEC1(GenericRegime):
         cool_temp[cool_temp < 20] = 20
 
         return cool_temp
+
+    def _calc_fire_duration(self):
+        """Estimates total burnout time based on heating phase time and estimates for decay duration based on
+        reworking of equations in BS EN 1991-1-2 Annex A (11)"""
+
+        a = np.full(len(self.params['A_c']), -1, dtype=np.float64)  # holds slopes of the cooling phase for diff. fires
+
+        crit = (self.params['t_str_max_cool_vent'] <= 0.5) & (self.params['regime'] == 'V')
+        a[crit] = 625
+        crit = (self.params['t_str_max_cool_vent'] <= 0.5) & (self.params['regime'] == 'F')
+        a[crit] = 625
+
+        crit = (self.params['t_str_max_cool_vent'] > 0.5) & (self.params['t_str_max_cool_vent'] < 2) & (self.params['regime'] == 'V')
+        a[crit] = 250 * (3 - self.params['t_str_max_cool_vent'][crit])
+        crit = (self.params['t_str_max_cool_vent'] > 0.5) & (self.params['t_str_max_cool_vent'] < 2) & (self.params['regime'] == 'F')
+        a[crit] = 250 * (3 - self.params['t_str_max_cool_vent'][crit])
+
+        crit = (self.params['t_str_max_cool_vent'] >= 2) & (self.params['regime'] == 'V')
+        a[crit] = 250
+        crit = (self.params['t_str_max_cool_vent'] >= 2) & (self.params['regime'] == 'F')
+        a[crit] = 250
+
+        self.params['burnout'] = (self.params['max_temp_t'] + (self.params['max_temp'] - 20)/a/self.params['GA'])*60
+
 
     def get_exposure(self, t):
         """Produce a vector of exposure temperatures at specific t. UNIT TEST REQUIRED"""
@@ -245,6 +273,12 @@ class FlashEC1(GenericRegime):
         col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac', 'remain_frac',
                     'A_v', 'Of_max', 'Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_max_vent', 't_lim', 't_max_fuel',
                     'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 't_str_max_heat', 't_str_max_cool_vent', 't_str_max_cool_fuel',
-                    'max_temp']
+                    'max_temp', 'burnout']
         data = data[col_list]
         return data
+
+    def check_bad_samples(self):
+        """Discards/amends  bad samples which produce unphysical results due imperfections of the adopted
+         methodology TODO this to be updated following statistical testing of outputs """
+
+        raise NotImplemented
