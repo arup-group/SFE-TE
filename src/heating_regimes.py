@@ -67,10 +67,10 @@ class FlashEC1(GenericRegime):
         self._calc_open_factor_fuel() # Calc open factor for fuel controlled - Of lim
         self._calc_GA_lim_factor()  # Calc GA_lim
         self._calc_GA_lim_k_mod()  # Calc k factor for GA_lim
-        self._define_burning_regime()
-        self._calc_max_temp_time()
-        self._calc_t_star_max()
-        self._calc_max_temp()
+        self._define_burning_regime() #Defiens whether it is ventilation control or fuel control fire
+        self._calc_max_temp_time() # Calculates the time of max temperature
+        self._calc_t_star_max() # Calculates t star helping parameters
+        self._calc_max_temp() # calculates max temperature
 
 
     def _calc_comp_sides(self):
