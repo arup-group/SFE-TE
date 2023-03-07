@@ -4,6 +4,7 @@ import pandas as pd
 
 class GenericRegime:
     REQUIRED_PARAMS = ['all required parameters']
+
     def __init__(self, design_fire_inputs, crit_value):
         self.crit_value = crit_value
         self.relevent_df_indices = None
@@ -12,13 +13,19 @@ class GenericRegime:
         self._get_relevant_design_fire_indices(design_fire_inputs)
         self._get_parameters(design_fire_inputs)
 
-    def get_exposure(self):
-        raise NotImplemented
-
     def _get_relevant_design_fire_indices(self, design_fire_inputs):
         raise NotImplemented
 
+    def perform_initial_calculations(self):
+        raise NotImplemented
+
+    def check_bad_samples(self):
+        raise NotImplemented
+
     def summarise_parameters(self):
+        raise NotImplemented
+
+    def get_exposure(self):
         raise NotImplemented
 
 
@@ -28,7 +35,6 @@ class FlashEC1(GenericRegime):
 
     def __init__(self, design_fire_inputs, crit_value):
         super().__init__(design_fire_inputs, crit_value)
-        self._perform_initial_calculations()
 
     def _get_relevant_design_fire_indices(self, design_fire_inputs):
         """Samples only relevant data from design fires based on criteria
@@ -41,7 +47,7 @@ class FlashEC1(GenericRegime):
         for param in FlashEC1.REQUIRED_PARAMS:
             self.params[param] = design_fire_inputs[param][self.relevent_df_indices]
 
-    def _perform_initial_calculations(self):
+    def perform_initial_calculations(self):
         """Performs all necessary time independent calculations needed for generation of time temperature curves
         Purpose of this method is to perform the calcs once at the initiation of the class so that the data
         can be reused for subsequent calls.
