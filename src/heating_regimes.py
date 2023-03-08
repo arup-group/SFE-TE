@@ -4,6 +4,8 @@ import pandas as pd
 
 class GenericRegime:
     REQUIRED_PARAMS = ['all required parameters']
+    NAME = 'Some name'
+    DESCRIPTION = 'Some description'
 
     def __init__(self, design_fire_inputs, crit_value):
         self.crit_value = crit_value
@@ -14,6 +16,9 @@ class GenericRegime:
         self._get_parameters(design_fire_inputs)
 
     def _get_relevant_design_fire_indices(self, design_fire_inputs):
+        raise NotImplemented
+
+    def _get_parameters(self, design_fire_inputs):
         raise NotImplemented
 
     def perform_initial_calculations(self):
@@ -32,6 +37,8 @@ class GenericRegime:
 class FlashEC1(GenericRegime):
 
     REQUIRED_PARAMS = ['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'q_f_d', 't_lim', 'fabr_inrt']
+    NAME = 'Flashover BS EN 1991-1-2'
+    DESCRIPTION = 'Some description'
 
     def __init__(self, design_fire_inputs, crit_value):
         super().__init__(design_fire_inputs, crit_value)
@@ -45,7 +52,13 @@ class FlashEC1(GenericRegime):
     def _get_parameters(self, design_fire_inputs):
         """Samples only revenat data from design fires based on criteria. UNITE TEST REQUIRED"""
         for param in FlashEC1.REQUIRED_PARAMS:
-            self.params[param] = design_fire_inputs[param][self.relevent_df_indices]
+            try:
+                self.params[param] = design_fire_inputs[param][self.relevent_df_indices]
+            except KeyError:
+                print(f'Missing input parameter for {FlashEC1.NAME} methodology: {param}')
+                raise KeyError
+
+
 
     def perform_initial_calculations(self):
         """Performs all necessary time independent calculations needed for generation of time temperature curves
@@ -282,3 +295,70 @@ class FlashEC1(GenericRegime):
          methodology TODO this to be updated following statistical testing of outputs """
 
         raise NotImplemented
+
+
+class TravelingISO16733(GenericRegime):
+
+    REQUIRED_PARAMS = ['A_c', 'h_c', 'c_ratio', 'q_f_d', 'Q', 'spr_rate', 'flap_angle', 'T_nf_max']
+    NAME = 'Traveling ISO 16733-2'
+    DESCRIPTION = 'Some description'
+
+    def __init__(self,design_fire_inputs, crit_value, assess_loc, max_travel_path):
+        super().__init__(design_fire_inputs, crit_value)
+        self.assess_loc = assess_loc  # Location of assessment as a fraction of travel path
+        self.max_travel_path = max_travel_path  # Location of assessment as a fraction of travel path
+
+    def _get_relevant_design_fire_indices(self, design_fire_inputs):
+        """Samples only relevant data from design fires based on criteria
+        UNIT TEST REQUIRED"""
+        # Get indeces
+        self.relevent_df_indices = design_fire_inputs['A_c'] > self.crit_value
+
+    def _get_parameters(self, design_fire_inputs):
+        """Samples only relevant data from design fires based on criteria. UNITE TEST REQUIRED"""
+        for param in TravelingISO16733.REQUIRED_PARAMS:
+            try:
+                self.params[param] = design_fire_inputs[param][self.relevent_df_indices]
+            except KeyError:
+                print(f'Missing input parameter for {TravelingISO16733.NAME} methodology: {param}')
+                raise KeyError
+
+    def _calc_comp_sides(self):
+        """Calculates short and long side of compartment. UNIT TEST REQUIRED"""
+        self.params['c_long'] = np.sqrt(self.params['A_c']/self.params['c_ratio'])
+        #  Checks if max traveling path is more than the maximum one possible for the floor plate.
+        #  If true the maximum is assigned. SHort side is computed based on the side ratio.
+        self.params['c_long'][self.params['c_long'] > self.max_travel_path] = self.max_travel_path
+        self.params['c_short'] = self.params['c_ratio']*self.params['c_long']
+
+    def _calc_burning_time(self):
+        """Calculates burning time for individual segment in [s]. See TGN C2"""
+        self.params['t_b'] = 1000*self.params['q_f_d']/self.params['Q']
+
+    def _calc_fire_base_length(self):
+        """Calculates burning time for individual segment. See TGN C2"""
+        self.params['L_f'] = self.params['spr_rate'] * self.params['t_b']/1000
+
+    def _calc_burnout(self):
+        """Calculates burning time for the whole traveling path in [min]. See TGN C2"""
+        self.params['burnout'] = 1000 * (self.params['c_long'] + self.params['L_f'])/self.params['spr_rate']/60
+
+    def _calc_flap_l(self):
+        """Calculates flapping length [m] based on flapping angle. See TGN C2"""
+        self.params['f'] = self.params['L_f'] + 2*self.params['h_c']*np.tan(np.radians(self.params['flap_angle']))
+
+    def perform_initial_calculations(self):
+        self._calc_comp_sides()
+        self._calc_burning_time()
+        self._calc_fire_base_length()
+        self._calc_burnout()
+        self._calc_flap_l()
+
+    def summarise_parameters(self):
+        """Returns all calculated parameters in human readable table format"""
+        data = pd.DataFrame.from_dict(self.params)
+        col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'flap_angle', 'T_nf_max',
+                    't_b', 'L_f', 'f', 'burnout']
+        data = data[col_list]
+
+        return data
