@@ -299,7 +299,7 @@ class FlashEC1(GenericRegime):
 
 class TravelingISO16733(GenericRegime):
 
-    REQUIRED_PARAMS = ['A_c', 'h_c', 'c_ratio', 'q_f_d', 'Q', 'spr_rate', 'flap_angle', 'T_nf_max']
+    REQUIRED_PARAMS = ['A_c', 'h_c', 'c_ratio', 'q_f_d', 'Q', 'spr_rate', 'flap_angle', 'T_nf_max', 'T_amb']
     NAME = 'Traveling ISO 16733-2'
     DESCRIPTION = 'Some description'
 
@@ -339,6 +339,14 @@ class TravelingISO16733(GenericRegime):
         """Calculates burning time for individual segment. See TGN C2"""
         self.params['L_f'] = self.params['spr_rate'] * self.params['t_b']/1000
 
+    def _calc_fire_base_area(self):
+        """Calculates fire base area. See TGN C2 - p.C3"""
+        self.params['A_f'] = self.params['L_f']*self.params['c_short']
+
+    def _calc_relative_fire_size(self):
+        """Calculates relative fire size - ratio of fire base to total length of the fire path"""
+        self.params['L_str'] = self.params['L_f']/self.params['c_long']
+
     def _calc_burnout(self):
         """Calculates burning time for the whole traveling path in [min]. See TGN C2"""
         self.params['burnout'] = 1000 * (self.params['c_long'] + self.params['L_f'])/self.params['spr_rate']/60
@@ -347,18 +355,51 @@ class TravelingISO16733(GenericRegime):
         """Calculates flapping length [m] based on flapping angle. See TGN C2"""
         self.params['f'] = self.params['L_f'] + 2*self.params['h_c']*np.tan(np.radians(self.params['flap_angle']))
 
+    def _calc_interim_parameters_for_near_field_temp(self):
+        """Method estimates r_x1, r_x2, and r_0 used for calculating averaged near field temperature.
+        See TGN C2 p. C3"""
+
+        self.params['r_0'] = self.params['Q'] * self.params['A_f'] * (5.38 / (self.params['h_c'] * (self.params['T_nf_max'] - self.params['T_amb']))) ** (3 / 2)
+        self.params['r_x1'] = np.max([np.zeros(len(self.params['A_c'])), self.params['r_0'] - 0.5 * self.params['L_f']],axis=0)
+        self.params['r_x2'] = np.max([0.5 * self.params['L_f'], self.params['r_0']], axis=0)
+
+    def _calc_average_near_field_temp(self):
+        """Estimates average near field temperature considering flapping angle and heat release rate.
+         See TGN C2 p. C3"""
+
+        #For inputs when the flap angle is 0 T_nf is equal to T_nf_max. Else use TGN equation on p. C3.
+        self.params['T_nf'] = np.full(len(self.params['A_c']), -1, dtype=np.float64)
+        crit = self.params['flap_angle'] < 0.001
+        self.params['T_nf'][crit] = self.params['T_nf_max'][crit]
+
+        # Get short values for case where flapping angle != 0
+        T_amb = self.params['T_amb'][~crit]
+        T_nf_max = self.params['T_nf_max'][~crit]
+        Q = self.params['Q'][~crit]
+        A_f = self.params['A_f'][~crit]
+        r_x1 = self.params['r_x1'][~crit]
+        r_x2 = self.params['r_x2'][~crit]
+        f = self.params['f'][~crit]
+        h_c = self.params['h_c'][~crit]
+        L_f = self.params['L_f'][~crit]
+        self.params['T_nf'][~crit] = T_amb + (T_nf_max * (2*r_x1+L_f) - 2*T_amb*r_x2)/f + (32.28*(Q*A_f)**(2/3) * ((0.5*f)**(1/3) - r_x2**(1/3)))/(f*h_c)
+
     def perform_initial_calculations(self):
         self._calc_comp_sides()
         self._calc_burning_time()
         self._calc_fire_base_length()
+        self._calc_fire_base_area()
+        self._calc_relative_fire_size()
         self._calc_burnout()
         self._calc_flap_l()
+        self._calc_interim_parameters_for_near_field_temp()
+        self._calc_average_near_field_temp()
 
     def summarise_parameters(self):
         """Returns all calculated parameters in human readable table format"""
         data = pd.DataFrame.from_dict(self.params)
-        col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'flap_angle', 'T_nf_max',
-                    't_b', 'L_f', 'f', 'burnout']
+        col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'T_amb', 'flap_angle',
+                    't_b', 'L_f', 'A_f', 'L_str', 'f', 'r_0', 'r_x1', 'r_x2', 'T_nf_max', 'T_nf', 'burnout']
         data = data[col_list]
 
         return data
