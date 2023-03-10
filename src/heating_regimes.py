@@ -331,6 +331,10 @@ class TravelingISO16733(GenericRegime):
         self.params['c_long'][self.params['c_long'] > self.max_travel_path] = self.max_travel_path
         self.params['c_short'] = self.params['c_ratio']*self.params['c_long']
 
+    def _calc_assess_loc(self):
+        """Calculations the position along the fire path where the time temeprature curve is to be assessed"""
+        self.params['x_loc'] =self.assess_loc*self.params['c_long']
+
     def _calc_burning_time(self):
         """Calculates burning time for individual segment in [s]. See TGN C2"""
         self.params['t_b'] = 1000*self.params['q_f_d']/self.params['Q']
@@ -384,10 +388,61 @@ class TravelingISO16733(GenericRegime):
         L_f = self.params['L_f'][~crit]
         self.params['T_nf'][~crit] = T_amb + (T_nf_max * (2*r_x1+L_f) - 2*T_amb*r_x2)/f + (32.28*(Q*A_f)**(2/3) * ((0.5*f)**(1/3) - r_x2**(1/3)))/(f*h_c)
 
+    def get_exposure(self, t, x_rel_loc=None):
+        """Gets temperature from traveling fire exposure at specific location, x_loc, and specific time t
+        Inputs:
+            t (float): calculation time in [min] - TBC
+            x_rel_loc (float): Relative location of assessment point. It must be between 0 and 1. If None then ass_loc value used
+            Defaults to None
+        Returns:
+            T_exp(array like): Vector of exposure temperatures with size N.
+        """
+
+        if x_rel_loc is not None:
+            self.params['x_loc'] = x_rel_loc * self.params['c_long']
+
+        x_str = self.params['spr_rate']*t*60/1000
+        crit = x_str > self.params['c_long']
+
+        x_str_t = self.params['c_long'].copy()
+        x_str_t[~crit] = x_str[~crit]
+        # Calculate L_str
+        L_str_t = np.full(len(self.params['A_c']), -1, dtype=np.float64)
+        L_str_t[crit] = np.max([1 + (self.params['L_f'][crit] - x_str[crit])/self.params['c_long'][crit], np.zeros(len(self.params['A_c'][crit]))], axis=0)
+        L_str_t[~crit] = np.min([self.params['L_str'][~crit], x_str[~crit]/self.params['c_long'][~crit]], axis=0)
+
+        #Calculate  position condition
+        dist = np.absolute(self.params['x_loc'] + 0.5*L_str_t*self.params['c_long'] - x_str_t)
+        crit = dist > 0.5*self.params['L_f']
+
+        #Calculate temperature
+        T_exp = np.zeros(len(self.params['A_c']), dtype=np.float64)
+        T_exp[crit] = self.params['T_amb'][crit] + ((5.38/self.params['h_c']) * (L_str_t*self.params['c_long']*self.params['c_short']*self.params['Q']/dist)**(2/3))[crit]
+        T_exp[~crit] = self.params['T_nf'][~crit]
+        T_exp[T_exp > self.params['T_nf']] = self.params['T_nf'][T_exp > self.params['T_nf']]
+
+        return T_exp
+
+    def get_time_temperature_curves(self, t_values, x_rel_loc=None):
+        """Get time temperature curves for defined times and relative locations
+        Inputs:
+            x_rel_loc (float): Relative location of assessment point. It must be between 0 and 1. If None then ass_loc value used
+            Defaults to None
+        Returns:
+            curve_data (array like): Array of exposure temperatures with shape len(t_values) x N
+            """
+
+        # TODO Rewrite this to allow for subsampling and get_exposure method to allow subsampling
+        curve_data = np.full((len(t_values), len(self.params['A_c'])), -1, dtype=np.float64)
+        for i, t in enumerate(t_values):
+            curve_data[i, :] = self.get_exposure(t, x_rel_loc)
+        return curve_data
+
     def perform_initial_calculations(self):
         self._calc_comp_sides()
         self._calc_burning_time()
         self._calc_fire_base_length()
+        self._calc_assess_loc()
         self._calc_fire_base_area()
         self._calc_relative_fire_size()
         self._calc_burnout()
@@ -399,7 +454,12 @@ class TravelingISO16733(GenericRegime):
         """Returns all calculated parameters in human readable table format"""
         data = pd.DataFrame.from_dict(self.params)
         col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'T_amb', 'flap_angle',
-                    't_b', 'L_f', 'A_f', 'L_str', 'f', 'r_0', 'r_x1', 'r_x2', 'T_nf_max', 'T_nf', 'burnout']
+                    't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'f', 'r_0', 'r_x1', 'r_x2', 'T_nf_max', 'T_nf', 'burnout']
         data = data[col_list]
-
         return data
+
+    def check_bad_samples(self):
+        """Discards/amends  bad samples which produce unphysical results due imperfections of the adopted
+         methodology TODO this to be updated following statistical testing of outputs """
+
+        raise NotImplemented
