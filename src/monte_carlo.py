@@ -104,10 +104,39 @@ class UniBiomodalDistr(GenericDistr):
             [[l_lim, 0], [self.l, 0], [self.l, self.h1], [self.m, self.h1], [self.m, self.h2],  [self.r, self.h2], [self.r, 0],  [r_lim, 0]])
 
 
+class UniformDistr(GenericDistr):
+    def __init__(self, params, generator):
+        super().__init__(params, generator)
+        self.label = 'Uniform distribution'
+
+    def _unpack_params(self, params):
+        """
+        Inputs:
+            params (array like): 2 element list, [l,r], where l is the left bound, r is the right bound."""
+        self.l, self.r = params[0], params[1]
+
+    def _calc_h(self):
+        """Calculates height of the distribution"""
+        self.h = 1/(self.r - self.l)
+
+    def calc_params(self):
+        self._calc_h()
+
+    def sample(self, sample_size):
+        """Samples from unifrom distribution"""
+        return self.rnd.uniform(self.l, self.r, size=sample_size)
+
+    def draw(self):
+        l_lim = self.l - 0.1 * (self.r - self.l)
+        r_lim = self.r + 0.1 * (self.r - self.l)
+        return np.array(
+            [[l_lim, 0], [self.l, 0], [self.l, self.h], [self.r, self.h],[self.r, 0],  [r_lim, 0]])
+
+
 class ProbControl:
 
     SUPPORTED_DISTR = {
-        'uniform': TriangularDistr,
+        'uniform': UniformDistr,
         'uni_bimodal': UniBiomodalDistr,
         'triangular': TriangularDistr,
         'weibull': TriangularDistr,
