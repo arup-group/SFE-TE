@@ -49,7 +49,7 @@ class TestFlashEC1(unittest.TestCase):
         expected_result = np.array([0.051, 0.200])
         npt.assert_almost_equal(self.parametric.params['Of_max'], expected_result, decimal=3)
 
-        #Test Of - tbd (-calc_open_factor_limits
+        #Test Of
         expected_result = np.array([0.051, 0.180])
         npt.assert_almost_equal(self.parametric.params['Of'], expected_result, decimal=3)
 
@@ -62,19 +62,19 @@ class TestFlashEC1(unittest.TestCase):
         npt.assert_almost_equal(self.parametric.params['Of_lim'], expected_result, decimal=3)
 
         #Test GA
-        expected_result = np.array([2.225, 33.640])
+        expected_result = np.array([2.225, 27.248])
         npt.assert_almost_equal(self.parametric.params['GA'], expected_result, decimal=3)
-
-        #Test GA_lim
-        expected_result = np.array([0.583, 0.408])
-        npt.assert_almost_equal(self.parametric.params['GA_lim'], expected_result, decimal=3)
 
         #Test k
         expected_result = np.array([0.995, 0.991])
         npt.assert_almost_equal(self.parametric.params['k'], expected_result, decimal=3)
 
+        #Test GA_lim
+        expected_result = np.array([0.583, 0.408])
+        npt.assert_almost_equal(self.parametric.params['GA_lim'], expected_result, decimal=3)
+
         #Test t_max_vent
-        expected_result = np.array([0.257, 0.050])
+        expected_result = np.array([0.257, 0.082])
         npt.assert_almost_equal(self.parametric.params['t_max_vent'], expected_result, decimal=3)
 
         #Test regime
@@ -86,7 +86,7 @@ class TestFlashEC1(unittest.TestCase):
         npt.assert_almost_equal(self.parametric.params['max_temp_t'], expected_result, decimal=3)
 
         #Test t_star_max
-        expected_result = np.array([0.571, 0.135])
+        expected_result = np.array([0.571, 0.136])
         npt.assert_almost_equal(self.parametric.params['t_str_max_heat'], expected_result, decimal=3)
 
 
