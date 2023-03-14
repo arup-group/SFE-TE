@@ -2,6 +2,8 @@
 
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy import stats
+from scipy.special import gamma
 
 class GenericDistr:
 
@@ -23,9 +25,10 @@ class GenericDistr:
 
 
 class TriangularDistr(GenericDistr):
+    label = 'Triangular distribution'
+
     def __init__(self, params, generator):
         super().__init__(params, generator)
-        self.label = 'Triangular distribution'
 
     def _unpack_params(self, params):
         """
@@ -35,9 +38,9 @@ class TriangularDistr(GenericDistr):
 
         self.l, self.r, self.alpha, self.A = params[0], params[1], params[2], params[3]
         if self.alpha > 1 or self.alpha < 0:
-            raise ValueError(f'Incorrect input for {self.label}. P1 = {self.alpha} must be between 0 and 1.')
+            raise ValueError(f'Incorrect input for {TriangularDistr.label}. P1 = {self.alpha} must be between 0 and 1.')
         if self.A > 1 or self.A < 0:
-            raise ValueError(f'Incorrect input for {self.label}. P2 = {self.A} must be between 0 and 1.')
+            raise ValueError(f'Incorrect input for {TriangularDistr.label}. P2 = {self.A} must be between 0 and 1.')
 
     def _calc_mode(self):
         """Calculates mode of triangular distribution. See TGN for derivation"""
@@ -46,7 +49,7 @@ class TriangularDistr(GenericDistr):
             self.m = self.r - (self.r - self.l)*(1 - self.alpha)**2 / (1 - self.A)
             if self.m < self.l or self.m > self.r or self.m > self.l + self.alpha*(self.r-self.l):
                 raise ValueError(
-                    f'{self.label} with mode of {self.m} invalid for min = {self.l}, max = {self.r}, P1 = {self.alpha}, and P2 = {self.A}')
+                    f'{TriangularDistr.label} with mode of {self.m} invalid for min = {self.l}, max = {self.r}, P1 = {self.alpha}, and P2 = {self.A}')
 
     def calc_params(self):
         self._calc_mode()
@@ -62,9 +65,10 @@ class TriangularDistr(GenericDistr):
 
 
 class UniBiomodalDistr(GenericDistr):
+    label = 'Bimodal uniform distribution'
+
     def __init__(self, params, generator):
         super().__init__(params, generator)
-        self.label = 'Bimodal uniform distribution'
 
     def _unpack_params(self, params):
         """
@@ -74,9 +78,9 @@ class UniBiomodalDistr(GenericDistr):
 
         self.l, self.r, self.alpha, self.A = params[0], params[1], params[2], params[3]
         if self.alpha > 1 or self.alpha < 0:
-            raise ValueError(f'Incorrect input for {self.label}. P1 = {self.alpha} must be between 0 and 1.')
+            raise ValueError(f'Incorrect input for {UniBiomodalDistr.label}. P1 = {self.alpha} must be between 0 and 1.')
         if self.A > 1 or self.A < 0:
-            raise ValueError(f'Incorrect input for {self.label}. P2 = {self.A} must be between 0 and 1.')
+            raise ValueError(f'Incorrect input for {UniBiomodalDistr.label}. P2 = {self.A} must be between 0 and 1.')
 
     def _calc_mode(self):
         """Calculates modes of uniform bimodal distribution. See TGN for derivation"""
@@ -88,26 +92,23 @@ class UniBiomodalDistr(GenericDistr):
         self._calc_mode()
 
     def sample(self, sample_size):
-
         #Define quantile interpolation function
         pts = np.array([[0, self.l], [self.A, self.m], [1, self.r]])
         f = interp1d(pts[:, 0], pts[:, 1])
-
         return f(self.rnd.uniform(0, 1, size=sample_size))
 
     def draw(self):
-
         l_lim = self.l - 0.1 * (self.r - self.l)
         r_lim = self.r + 0.1 * (self.r - self.l)
-
         return np.array(
             [[l_lim, 0], [self.l, 0], [self.l, self.h1], [self.m, self.h1], [self.m, self.h2],  [self.r, self.h2], [self.r, 0],  [r_lim, 0]])
 
 
 class UniformDistr(GenericDistr):
+    label = 'Uniform distribution'
+
     def __init__(self, params, generator):
         super().__init__(params, generator)
-        self.label = 'Uniform distribution'
 
     def _unpack_params(self, params):
         """
@@ -133,21 +134,182 @@ class UniformDistr(GenericDistr):
             [[l_lim, 0], [self.l, 0], [self.l, self.h], [self.r, self.h],[self.r, 0],  [r_lim, 0]])
 
 
+class NormalDistr(GenericDistr):
+    label = 'Normal distribution'
+
+    def __init__(self, params, generator):
+        super().__init__(params, generator)
+
+    def _unpack_params(self, params):
+        """
+        Inputs:
+            params (array like): 4 element list, [l,r, mu. sigma], where l is the left bound, r is the right bound,
+            mu is mean and sigma is standard deviation"""
+        self.l, self.r, self.mu, self.sigma = params[0], params[1], params[2], params[3]
+
+    def _calc_ends(self):
+        """Calculates CDF(x) where x are truncated values if defined, i.e left inverse and right inverse.
+        These are then used in reverse sampling routine"""
+
+        if self.l is None:
+            self.l_inv = 0
+        else:
+            self.l_inv = stats.norm.cdf(self.l, loc=self.mu, scale=self.sigma)
+
+        if self.r is None:
+            self.r_inv = 1
+        else:
+            self.r_inv = stats.norm.cdf(self.r, loc=self.mu, scale=self.sigma)
+
+    def calc_params(self):
+        self._calc_ends()
+
+    def sample(self, sample_size):
+        """Sample distribution using inverse sampling method"""
+        return stats.norm.ppf(self.rnd.uniform(self.l_inv, self.r_inv, size=sample_size), loc=self.mu, scale=self.sigma)
+
+    def draw(self):
+        x = np.linspace(self.mu - 4*self.sigma, self.mu + 4*self.sigma, 100)
+        y = stats.norm.pdf(x, loc=self.mu, scale=self.sigma)/(self.r_inv - self.l_inv)
+        if self.l is not None:
+            y[x<self.l] = 0
+        if self.r is not None:
+            y[x > self.r] = 0
+        return np.array([x, y]).T
+
+
+class WeibullDistr(GenericDistr):
+    label = 'Weibull distribution'
+
+    def __init__(self, params, generator):
+        super().__init__(params, generator)
+
+
+    def _unpack_params(self, params):
+        """
+        Inputs:
+            params (array like): 4 element list, [l,r, mu, sigma], where l is the left bound, r is the right bound,
+            mu is mean and sigma is standard deviation. Values must be positive"""
+        if any([k < 0 for k in params if k is not None]):
+            raise ValueError(f'Incorrect input for {WeibullDistr.label}. All input parameters must be positive.')
+        self.l, self.r, self.mu, self.sigma = params[0], params[1], params[2], params[3]
+
+    def _calc_k_lambd(self):
+        """Calculates k and lambda factor from standard deviation and mean. Note this is approximate solution
+        See https://journals.ametsoc.org/view/journals/apme/17/3/1520-0450_1978_017_0350_mfewsf_2_0_co_2.xml"""
+
+        self.k = (self.sigma/self.mu)**(-1.086)
+        self.lambd = self.mu/gamma(1+1/self.k)
+
+    def _calc_ends(self):
+        """Calculates CDF(x) where x are truncated values if defined, i.e left inverse and right inverse.
+        These are then used in reverse sampling routine"""
+
+        if self.l is None:
+            self.l_inv = 0
+        else:
+            self.l_inv = stats.weibull_min.cdf(self.l, c=self.k, loc=0, scale=self.lambd)
+
+        if self.r is None:
+            self.r_inv = 1
+        else:
+            self.r_inv = stats.weibull_min.cdf(self.r, c=self.k, loc=0, scale=self.lambd)
+
+    def calc_params(self):
+        self._calc_k_lambd()
+        self._calc_ends()
+
+    def sample(self, sample_size):
+        """Sample distribution using inverse sampling method"""
+        return stats.weibull_min.ppf(self.rnd.uniform(self.l_inv, self.r_inv, size=sample_size), c=self.k, loc=0, scale=self.lambd)
+
+    def draw(self):
+        x = np.linspace(0, self.mu + 5*self.sigma, 100)
+        y = stats.weibull_min.pdf(x, c=self.k, loc=0, scale=self.lambd)/(self.r_inv - self.l_inv)
+        if self.l is not None:
+            y[x < self.l] = 0
+        if self.r is not None:
+            y[x > self.r] = 0
+        return np.array([x, y]).T
+
+    def report(self):
+        return {'l_inv': self.l_inv, 'r_inv': self.r_inv, 'k' : self.k, 'lambda': self.lambd}
+
+
+class GumbelDistr(GenericDistr):
+    label = 'Gumbel distribution'
+
+    def __init__(self, params, generator):
+        super().__init__(params, generator)
+
+    def _unpack_params(self, params):
+        """
+        Inputs:
+            params (array like): 4 element list, [l,r, mu, sigma], where l is the left bound, r is the right bound,
+            mu is mean and sigma is standard deviation. Values must be positive"""
+
+        self.l, self.r, self.mu, self.sigma = params[0], params[1], params[2], params[3]
+        if self.sigma < 0:
+            raise ValueError(f'Incorrect input for {GumbelDistr.label}. Variance must be positive.')
+
+    def _calc_beta_m(self):
+        """Calculates beta and z factor from standard deviation and mean. Note this is approximate solution.
+        See https://en.wikipedia.org/wiki/Gumbel_distribution"""
+
+        self.beta = self.sigma/np.pi*(6**0.5)
+        self.m = self.mu - 0.5772*self.beta  # 0.57772 is Euler - Mascheroni constant
+
+    def _calc_ends(self):
+        """Calculates CDF(x) where x are truncated values if defined, i.e left inverse and right inverse.
+        These are then used in reverse sampling routine"""
+
+        if self.l is None:
+            self.l_inv = 0
+        else:
+            self.l_inv = stats.gumbel_r.cdf(self.l, loc=self.m, scale=self.beta)
+
+        if self.r is None:
+            self.r_inv = 1
+        else:
+            self.r_inv = stats.gumbel_r.cdf(self.r, loc=self.m, scale=self.beta)
+
+    def calc_params(self):
+        self._calc_beta_m()
+        self._calc_ends()
+
+    def sample(self, sample_size):
+        """Sample distribution using inverse sampling method"""
+        return stats.gumbel_r.ppf(self.rnd.uniform(self.l_inv, self.r_inv, size=sample_size), loc=self.m, scale=self.beta)
+
+    def draw(self):
+        x = np.linspace(0, self.mu + 5*self.sigma, 100)
+        y = stats.gumbel_r.pdf(x, loc=self.m, scale=self.beta)/(self.r_inv - self.l_inv)
+        if self.l is not None:
+            y[x < self.l] = 0
+        if self.r is not None:
+            y[x > self.r] = 0
+        return np.array([x, y]).T
+
+    def report(self):
+        return {'l_inv': self.l_inv, 'r_inv': self.r_inv, 'beta' : self.beta, 'm': self.m}
+
+
 class ProbControl:
 
     SUPPORTED_DISTR = {
         'uniform': UniformDistr,
         'uni_bimodal': UniBiomodalDistr,
         'triangular': TriangularDistr,
-        'weibull': TriangularDistr,
-        'user_def': TriangularDistr,
-        'gumbel': TriangularDistr,
-        'fixed_point': TriangularDistr}
+        'weibull': WeibullDistr,
+        'user_def': TriangularDistr, #TODO
+        'gumbel': GumbelDistr,
+        'fixed_point': TriangularDistr, #TODO
+        'normal': NormalDistr}
 
     def __init__(self, inputs, seed):
         self.inputs = inputs
         self.rnd = ProbControl._initiate_random_seed(seed)
-        self.sampled_inputs = {'values': {}, 'curves': {}}
+        self.sampled_inputs = {'values': {}, 'curves': {}, 'calcs': {}}
         self.input_distr_curves = {}
 
     @staticmethod
@@ -162,6 +324,8 @@ class ProbControl:
             distr.calc_params()
             self.sampled_inputs['values'][input] = distr.sample(sample_size=sample_size)
             self.sampled_inputs['curves'][input] = distr.draw()
+            self.sampled_inputs['calcs'][input] = distr.report()
+
         return self.sampled_inputs
 
     def draw_distr_curves(self):
