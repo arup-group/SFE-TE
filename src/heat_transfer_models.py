@@ -20,38 +20,33 @@ class GenericHT():
         self.equiv_prot_req_data = None
         self.equiv_prot_interp = None
 
-
-
-
-
     def _load_equivalent_curve(self, equivalent_curve):
         return GenericHT.equivalent_curves[equivalent_curve]()
 
     def _process_sample_section_geometry(self, sect_prop):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_equivelant_protection(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def plot_equivelant_protection_curve(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def calc_thermal_response(self):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class SteelEC3(GenericHT):
     # Some constants
     PROT_THICK_RANGE = [0.0005, 0.1, 0.0005]
 
-    def __init__(self, equivalent_curve, sect_prop, mat_prop, prot_prop, T_lim, eqv_max, dt, T_amb):
+    def __init__(self, equivalent_curve, sect_prop, prot_prop, T_lim, eqv_max, dt, T_amb):
         super().__init__(equivalent_curve)
 
         self.label = 'Steel EC3 HT'
         self.descr = '1D heat transfer in accordance with BS EN 1993-1-2'
 
         self.prot_prop = prot_prop
-        self.mat_prop = mat_prop
         self.sect_prop = self._process_sample_section_geometry(sect_prop)
 
         self.T_lim = T_lim
@@ -165,7 +160,7 @@ class SteelEC3(GenericHT):
 
         return debug_results
 
-    def calc_thermal_response(self, equiv_exp, exposure_fxn, t_final, sample_size):
+    def calc_thermal_response(self, equiv_exp, exposure_fxn, t_final, sample_size, output_history):
         """Calculates the thermal response of the sample section against an array of design fires representative
         of a single exposure regime. INTEGRATION TEST REQUIRED
 
@@ -175,10 +170,11 @@ class SteelEC3(GenericHT):
             equiv_exp (float): equivalent exposure rating used to calculate appropriate protection thickness
             t_final (float): end analysis time
             sample_size (int): sample size - IT MIGHT BE REMOVED
+            output_history (bool): Whether
 
         Returns
-            max_temps (array like) - array of max temperatures"""
-
+            max_temps (array like) - array of max temperatures,
+            all_temps (array_like) - array of complete thermal response history in shape (sample size x times)"""
 
         # Get some properties
         c_p = self.prot_prop['c']
@@ -192,29 +188,36 @@ class SteelEC3(GenericHT):
         times = np.arange(0, 60*t_final, self.dt)
 
         # Create initial temperature array equal to ambient of same shape
-        T_m = np.full((1, sample_size), self.T_amb, dtype=np.float64)
+        T_m = np.full(sample_size, self.T_amb, dtype=np.float64)
+        T_max = np.full(sample_size, self.T_amb, dtype=np.float64)
 
         # Holder for results
-        all_temps = np.full((len(times), sample_size), -1, dtype=np.float64)
+        if output_history:
+            all_temps = np.full((len(times), sample_size), -1, dtype=np.float64)
+        else:
+            all_temps = None
 
         for i, t in enumerate(times):
-            all_temps[i, :] = T_m
+
+            if all_temps is not None:
+                all_temps[i, :] = T_m
 
             c_a = SteelEC3._calc_steel_hc(T_m)
             ro_a = SteelEC3._calc_steel_dens()
 
-            T_g = exposure_fxn(t+self.dt, sample_size)
-            T_g_prev= exposure_fxn(t, sample_size)
+            #TODO ENSURE CONSISTENT TIMES
+            T_g = exposure_fxn((t+self.dt)/60)
+            T_g_prev= exposure_fxn(t/60)
 
             fi = c_p * ro_p * d_p * A_v / (c_a * ro_a)
-
             dT = k_p * A_v * (T_g - T_m) * self.dt / ((d_p * c_a * ro_a) * (1 + fi / 3)) - (np.exp(fi/10)-1)*(T_g - T_g_prev)
             #Some conditions can be applied here for early stop
 
             T_m = T_m + dT
             T_m[T_m < self.T_amb] = self.T_amb  # Temperature cannot go below ambient. TO BE CHECKED
+            T_max[T_max<T_m] = T_m[T_max<T_m]
 
-        return all_temps
+        return T_max, all_temps
 
 
 
