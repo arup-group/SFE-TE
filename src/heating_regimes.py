@@ -40,8 +40,9 @@ class FlashEC1(GenericRegime):
     NAME = 'Flashover BS EN 1991-1-2'
     DESCRIPTION = 'Some description'
 
-    def __init__(self, design_fire_inputs, crit_value):
+    def __init__(self, design_fire_inputs, crit_value, Of_limits):
         super().__init__(design_fire_inputs, crit_value)
+        self.Of_limits = Of_limits
 
     def _get_relevant_design_fire_indices(self, design_fire_inputs):
         """Samples only relevant data from design fires based on criteria
@@ -113,11 +114,11 @@ class FlashEC1(GenericRegime):
         self.params['Of'] = self.params['Of_max']*(1 - self.params['remain_frac'])
 
     def _apply_open_factor_limits(self):
-        """Applies limits to Of for EC1 methodology.
+        """Applies limits to Of for EC1 methodology which are user defined.
         See BS EN 1991-1-2 A.2a and  PD 6688-1-2:2007 Section 3.1.2(d)
         UNIT TEST REQUIRED"""
-        self.params['Of'][self.params['Of'] > 0.2] = 0.2
-        self.params['Of'][self.params['Of'] < 0.01] = 0.01
+        self.params['Of'][self.params['Of'] > self.Of_limits[1]] = self.Of_limits[1]
+        self.params['Of'][self.params['Of'] < self.Of_limits[0]] = self.Of_limits[0]
 
     def _calc_total_surface_area_fuel_density(self):
         """See BS EN 1993-1-2 A.7 UNIT TEST REQUIRED"""
