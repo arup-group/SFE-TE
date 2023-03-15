@@ -421,6 +421,7 @@ class TravelingISO16733(GenericRegime):
         T_exp[crit] = self.params['T_amb'][crit] + ((5.38/self.params['h_c']) * (L_str_t*self.params['c_long']*self.params['c_short']*self.params['Q']/dist)**(2/3))[crit]
         T_exp[~crit] = self.params['T_nf'][~crit]
         T_exp[T_exp > self.params['T_nf']] = self.params['T_nf'][T_exp > self.params['T_nf']]
+        T_exp[self.params['burnout'] < t] = self.params['T_amb'][self.params['burnout'] < t]
 
         return T_exp
 
