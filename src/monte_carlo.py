@@ -294,6 +294,39 @@ class GumbelDistr(GenericDistr):
         return {'l_inv': self.l_inv, 'r_inv': self.r_inv, 'beta' : self.beta, 'm': self.m}
 
 
+class FixedPointDistr(GenericDistr):
+    label = 'Fixed point distribution'
+
+    def __init__(self, params, generator):
+        super().__init__(params, generator)
+
+    def _unpack_params(self, params):
+        """
+        Inputs:
+            params (array like): Requires only one parameter at 3rd poistion"""
+        self.value = params[2]
+
+    def calc_params(self):
+        pass
+
+    def sample(self, sample_size):
+        """Sample distribution using inverse sampling method"""
+        return np.full(shape=sample_size, fill_value=self.value, dtype=np.float64)
+
+    def draw(self):
+        return np.array([[self.value, 50], [self.value+0.02, 50]])
+
+    def report(self):
+        return {}
+
+
+class UserDefDistr(GenericDistr):
+    label = 'User defined distribution'
+
+    def __init__(self, params, generator):
+        raise NotImplementedError(f'{UserDefDistr.label} feature not developed at current version.')
+
+
 class ProbControl:
 
     SUPPORTED_DISTR = {
@@ -301,9 +334,9 @@ class ProbControl:
         'uni_bimodal': UniBiomodalDistr,
         'triangular': TriangularDistr,
         'weibull': WeibullDistr,
-        'user_def': TriangularDistr, #TODO
+        'user_def': UserDefDistr, #TODO
         'gumbel': GumbelDistr,
-        'fixed_point': TriangularDistr, #TODO
+        'fixed_point': FixedPointDistr,
         'normal': NormalDistr}
 
     def __init__(self, inputs, seed):
