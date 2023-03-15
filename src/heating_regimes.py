@@ -48,7 +48,7 @@ class FlashEC1(GenericRegime):
         """Samples only relevant data from design fires based on criteria
         UNIT TEST REQUIRED"""
         # Get indeces
-        self.relevent_df_indices = design_fire_inputs['A_c'] < self.crit_value
+        self.relevent_df_indices = np.where(design_fire_inputs['A_c'] < self.crit_value)
 
     def _get_parameters(self, design_fire_inputs):
         """Samples only revenat data from design fires based on criteria. UNITE TEST REQUIRED"""
@@ -289,6 +289,7 @@ class FlashEC1(GenericRegime):
                     'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 't_str_max_heat', 't_str_max_cool_vent', 't_str_max_cool_fuel',
                     'max_temp', 'burnout']
         data = data[col_list]
+        data = data.set_index(np.array(self.relevent_df_indices).flatten())
         return data
 
     def check_bad_samples(self):
@@ -313,7 +314,7 @@ class TravelingISO16733(GenericRegime):
         """Samples only relevant data from design fires based on criteria
         UNIT TEST REQUIRED"""
         # Get indeces
-        self.relevent_df_indices = design_fire_inputs['A_c'] > self.crit_value
+        self.relevent_df_indices = np.where(design_fire_inputs['A_c'] > self.crit_value)
 
     def _get_parameters(self, design_fire_inputs):
         """Samples only relevant data from design fires based on criteria. UNITE TEST REQUIRED"""
@@ -458,6 +459,7 @@ class TravelingISO16733(GenericRegime):
         col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'T_amb', 'flap_angle',
                     't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'f', 'r_0', 'r_x1', 'r_x2', 'T_nf_max', 'T_nf', 'burnout']
         data = data[col_list]
+        data = data.set_index(np.array(self.relevent_df_indices).flatten())
         return data
 
     def check_bad_samples(self):
