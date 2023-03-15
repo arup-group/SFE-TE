@@ -2,3 +2,4 @@ __pycache__/
 .idea/*
 *.pyc
 src/scribbles.py
+src/dump/*
