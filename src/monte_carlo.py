@@ -12,16 +12,19 @@ class GenericDistr:
         self._unpack_params(params)
 
     def _unpack_params(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def calc_params(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def sample(self, sample_size):
-        raise NotImplemented
+        raise NotImplementedError
 
     def draw(self):
-        raise NotImplemented
+        raise NotImplementedError
+
+    def report(self):
+        raise NotImplementedError
 
 
 class TriangularDistr(GenericDistr):
@@ -63,6 +66,10 @@ class TriangularDistr(GenericDistr):
         peak = 2/(self.r-self.l)
         return np.array([[l_lim, 0], [self.l, 0], [self.m, peak], [self.r, 0], [r_lim, 0]])
 
+    def report_params(self):
+        return {'label': TriangularDistr.label, 'mode': self.m}
+
+
 
 class UniBiomodalDistr(GenericDistr):
     label = 'Bimodal uniform distribution'
@@ -103,6 +110,9 @@ class UniBiomodalDistr(GenericDistr):
         return np.array(
             [[l_lim, 0], [self.l, 0], [self.l, self.h1], [self.m, self.h1], [self.m, self.h2],  [self.r, self.h2], [self.r, 0],  [r_lim, 0]])
 
+    def report_params(self):
+        return {'label': UniBiomodalDistr.label, 'mode': self.m, 'h1': self.h1, 'h2': self.h2}
+
 
 class UniformDistr(GenericDistr):
     label = 'Uniform distribution'
@@ -132,6 +142,9 @@ class UniformDistr(GenericDistr):
         r_lim = self.r + 0.1 * (self.r - self.l)
         return np.array(
             [[l_lim, 0], [self.l, 0], [self.l, self.h], [self.r, self.h],[self.r, 0],  [r_lim, 0]])
+
+    def report_params(self):
+        return {'label': UniformDistr.label}
 
 
 class NormalDistr(GenericDistr):
@@ -176,6 +189,10 @@ class NormalDistr(GenericDistr):
         if self.r is not None:
             y[x > self.r] = 0
         return np.array([x, y]).T
+
+    def report_params(self):
+        return {'label': NormalDistr.label, 'l_inv': self.l_inv, 'r_inv': self.r_inv,
+                'loss': 1 - self.r_inv - self.l_inv}
 
 
 class WeibullDistr(GenericDistr):
@@ -232,8 +249,9 @@ class WeibullDistr(GenericDistr):
             y[x > self.r] = 0
         return np.array([x, y]).T
 
-    def report(self):
-        return {'l_inv': self.l_inv, 'r_inv': self.r_inv, 'k' : self.k, 'lambda': self.lambd}
+    def report_params(self):
+        return {'label': WeibullDistr.label, 'l_inv': self.l_inv, 'r_inv': self.r_inv, 'loss': 1 - self.r_inv - self.l_inv,
+                'k': self.k, 'lambda': self.lambd}
 
 
 class GumbelDistr(GenericDistr):
@@ -290,8 +308,9 @@ class GumbelDistr(GenericDistr):
             y[x > self.r] = 0
         return np.array([x, y]).T
 
-    def report(self):
-        return {'l_inv': self.l_inv, 'r_inv': self.r_inv, 'beta' : self.beta, 'm': self.m}
+    def report_params(self):
+        return {'label': GumbelDistr.label, 'l_inv': self.l_inv, 'r_inv': self.r_inv, 'loss': 1 - self.r_inv-self.l_inv,
+                'beta': self.beta, 'm': self.m}
 
 
 class FixedPointDistr(GenericDistr):
@@ -316,8 +335,8 @@ class FixedPointDistr(GenericDistr):
     def draw(self):
         return np.array([[self.value, 50], [self.value+0.02, 50]])
 
-    def report(self):
-        return {}
+    def report_params(self):
+        return {'label': FixedPointDistr.label}
 
 
 class UserDefDistr(GenericDistr):
@@ -342,7 +361,7 @@ class ProbControl:
     def __init__(self, inputs, seed):
         self.inputs = inputs
         self.rnd = ProbControl._initiate_random_seed(seed)
-        self.sampled_inputs = {'values': {}, 'curves': {}, 'calcs': {}}
+        self.sampled_inputs = {'values': {}, 'curves': {}, 'interim_params': {}}
         self.input_distr_curves = {}
 
     @staticmethod
@@ -350,16 +369,22 @@ class ProbControl:
         return np.random.default_rng(seed)
 
     def sample_inputs(self, sample_size):
-        """Samples requested inputs"""
+        """Samples requested inputs.
+
+            Inputs:
+                sample_size (int): sample size
+
+            Returns:
+                sampled_inputs (dict): Dictionary with 3 keys: 'values' - contains 1 X sample size array of sampled
+                values; 'curves' - contains data for plotting target analytical curve; 'interim_params' - contains data
+                on calculated interim parameters for checking"""
 
         for input in self.inputs:
             distr = ProbControl.SUPPORTED_DISTR[self.inputs[input][0]](params=self.inputs[input][1:], generator=self.rnd)
             distr.calc_params()
             self.sampled_inputs['values'][input] = distr.sample(sample_size=sample_size)
             self.sampled_inputs['curves'][input] = distr.draw()
-            self.sampled_inputs['calcs'][input] = distr.report()
+            self.sampled_inputs['interim_params'][input] = distr.report_params()
 
         return self.sampled_inputs
 
-    def draw_distr_curves(self):
-        pass
