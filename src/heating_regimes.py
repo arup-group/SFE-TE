@@ -33,11 +33,25 @@ class GenericRegime:
     def get_exposure(self):
         raise NotImplemented
 
+    def _subsample_params(self, mask):
+        """Subsamples input parameters for given mask. This method is used to reduce amount of computation for
+        get_exposure and get_time_temperature_curves methods
+
+        Inputs:
+            mask (array_like of bools): array of which params to sample. Size should equal the sample size
+        Returns:
+            sub_params: Dictionary calculated parameters with applied mask"""
+
+        if mask is None:
+            return self.params
+        else:
+            return {k: self.params[k][mask] for k in self.params}
+
 
 class FlashEC1(GenericRegime):
 
     REQUIRED_PARAMS = ['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'q_f_d', 't_lim', 'fabr_inrt']
-    NAME = 'Flashover BS EN 1991-1-2'
+    NAME = 'Uniform BS EN 1991-1-2'
     DESCRIPTION = 'Some description'
 
     def __init__(self, design_fire_inputs, crit_value, Of_limits):
@@ -195,33 +209,36 @@ class FlashEC1(GenericRegime):
         """Calculates burnout time based on the input parameters"""
         pass
 
-    def _calc_cooling_phase_temp(self, t):
+    def _calc_cooling_phase_temp(self, t, sub_params):
         """Calculates cooling phase temperatures in accordance with BS EN 1991-1-2 Annex A (11)
 
         Inputs:
             t (array like): time vector in [min - TBC]
+            sub_params (dict): subsample of parameters to be used for calculation. This is controlled from
+            get thermal_exposure method.
+
         Returns:
             Array of temperatures for particular times in [degC]"""
         #TODO coordinate time units
 
-        cool_temp = np.full(len(self.params['A_c']), -1, dtype=np.float64)
-        t_str_cool = self.params['GA']*t/60
+        cool_temp = np.full(len(sub_params['A_c']), -1, dtype=np.float64)
+        t_str_cool = sub_params['GA']*t/60
 
         # Case A.11a
-        crit = (self.params['t_str_max_cool_vent'] <= 0.5) & (self.params['regime'] == 'V')
-        cool_temp[crit] = self.params['max_temp'][crit] - 625 * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
-        crit = (self.params['t_str_max_cool_vent'] <= 0.5) & (self.params['regime'] == 'F')
-        cool_temp[crit] = self.params['max_temp'][crit] - 625 * (t_str_cool[crit] - self.params['t_str_max_cool_fuel'][crit])
+        crit = (sub_params['t_str_max_cool_vent'] <= 0.5) & (sub_params['regime'] == 'V')
+        cool_temp[crit] = sub_params['max_temp'][crit] - 625 * (t_str_cool[crit] - sub_params['t_str_max_cool_vent'][crit])
+        crit = (sub_params['t_str_max_cool_vent'] <= 0.5) & (sub_params['regime'] == 'F')
+        cool_temp[crit] = sub_params['max_temp'][crit] - 625 * (t_str_cool[crit] - sub_params['t_str_max_cool_fuel'][crit])
         # Case A.11b
-        crit = (self.params['t_str_max_cool_vent'] > 0.5) & (self.params['t_str_max_cool_vent'] < 2) & (self.params['regime'] == 'V')
-        cool_temp[crit] = self.params['max_temp'][crit] - 250 * (3 - self.params['t_str_max_cool_vent'][crit]) * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
-        crit = (self.params['t_str_max_cool_vent'] > 0.5) & (self.params['t_str_max_cool_vent'] < 2) & (self.params['regime'] == 'F')
-        cool_temp[crit] = self.params['max_temp'][crit] - 250 * (3 - self.params['t_str_max_cool_vent'][crit]) * (t_str_cool[crit] - self.params['t_str_max_cool_fuel'][crit])
+        crit = (sub_params['t_str_max_cool_vent'] > 0.5) & (sub_params['t_str_max_cool_vent'] < 2) & (sub_params['regime'] == 'V')
+        cool_temp[crit] = sub_params['max_temp'][crit] - 250 * (3 - sub_params['t_str_max_cool_vent'][crit]) * (t_str_cool[crit] - sub_params['t_str_max_cool_vent'][crit])
+        crit = (sub_params['t_str_max_cool_vent'] > 0.5) & (sub_params['t_str_max_cool_vent'] < 2) & (sub_params['regime'] == 'F')
+        cool_temp[crit] = sub_params['max_temp'][crit] - 250 * (3 - sub_params['t_str_max_cool_vent'][crit]) * (t_str_cool[crit] - sub_params['t_str_max_cool_fuel'][crit])
         # Case A.11c
-        crit = (self.params['t_str_max_cool_vent'] >= 2) & (self.params['regime'] == 'V')
-        cool_temp[crit] = self.params['max_temp'][crit] - 250 * (t_str_cool[crit] - self.params['t_str_max_cool_vent'][crit])
-        crit = (self.params['t_str_max_cool_vent'] >= 2) & (self.params['regime'] == 'F')
-        cool_temp[crit] = self.params['max_temp'][crit] - 250 * (t_str_cool[crit] - self.params['t_str_max_cool_fuel'][crit])
+        crit = (sub_params['t_str_max_cool_vent'] >= 2) & (sub_params['regime'] == 'V')
+        cool_temp[crit] = sub_params['max_temp'][crit] - 250 * (t_str_cool[crit] - sub_params['t_str_max_cool_vent'][crit])
+        crit = (sub_params['t_str_max_cool_vent'] >= 2) & (sub_params['regime'] == 'F')
+        cool_temp[crit] = sub_params['max_temp'][crit] - 250 * (t_str_cool[crit] - sub_params['t_str_max_cool_fuel'][crit])
 
         #Temperature cannot go below ambient
         cool_temp[cool_temp < 20] = 20
@@ -252,34 +269,37 @@ class FlashEC1(GenericRegime):
         self.params['burnout'] = (self.params['max_temp_t'] + (self.params['max_temp'] - 20)/a/self.params['GA'])*60
 
 
-    def get_exposure(self, t):
+    def get_exposure(self, t, subsample_mask):
         """Produce a vector of exposure temperatures at specific t. UNIT TEST REQUIRED"""
 
-        t_str_heat = np.full(len(self.params['A_c']), -1, dtype=np.float64)
+        sub_params = self._subsample_params(mask=subsample_mask)
+
+        t_str_heat = np.full(len(sub_params['A_c']), -1, dtype=np.float64)
 
         # Calculate t_str_heat based on fire regime:
-        crit = self.params['regime'] == 'V'
-        t_str_heat[crit] = self.params['GA'][crit] * t/60
-        crit = self.params['regime'] == 'F'
-        t_str_heat[crit] = self.params['GA_lim'] [crit] * t/60
+        crit = sub_params['regime'] == 'V'
+        t_str_heat[crit] = sub_params['GA'][crit] * t/60
+        crit = sub_params['regime'] == 'F'
+        t_str_heat[crit] = sub_params['GA_lim'][crit] * t/60
 
         #Calculate heating and colling temperatures. These are compared to avoid discontinuities
         # The logic is that if t_str is smaller than t_max_str the resulting temp will allways be bigger
         #than temp max calculated from the heating phase Similar approach is implemented in the SFE toolkit
         heat_phase_temp = self._calc_heat_phase_temp(t_str_heat)
-        cool_phase_temp = self._calc_cooling_phase_temp(t)
+        cool_phase_temp = self._calc_cooling_phase_temp(t, sub_params)
 
         return np.min([heat_phase_temp, cool_phase_temp], axis=0)
 
-    def get_time_temperature_curves(self, t_values):
+    def get_time_temperature_curves(self, t_values, subsample_mask):
         """Get time temperature curves"""
+        if subsample_mask is None:
+            curve_data = np.full((len(t_values), len(self.params['A_c'])), -1, dtype=np.float64)
+        else:
+            curve_data = np.full((len(t_values), sum(subsample_mask)), -1, dtype=np.float64)
 
-        # TODO Rewrite this to allow for subsampling and get_exposure method to allow subsampling
-        curve_data = np.full((len(t_values), len(self.params['A_c'])), -1, dtype=np.float64)
         for i, t in enumerate(t_values):
-            curve_data[i, :] = self.get_exposure(t)
+            curve_data[i, :] = self.get_exposure(t, subsample_mask)
         return curve_data
-
 
     def summarise_parameters(self):
         """Returns all calculated parameters in human readable table format"""
@@ -296,7 +316,7 @@ class FlashEC1(GenericRegime):
         """Discards/amends  bad samples which produce unphysical results due imperfections of the adopted
          methodology TODO this to be updated following statistical testing of outputs """
 
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class TravelingISO16733(GenericRegime):
@@ -390,55 +410,62 @@ class TravelingISO16733(GenericRegime):
         L_f = self.params['L_f'][~crit]
         self.params['T_nf'][~crit] = T_amb + (T_nf_max * (2*r_x1+L_f) - 2*T_amb*r_x2)/f + (32.28*(Q*A_f)**(2/3) * ((0.5*f)**(1/3) - r_x2**(1/3)))/(f*h_c)
 
-    def get_exposure(self, t, x_rel_loc=None):
+    def get_exposure(self, t, x_rel_loc=None, subsample_mask=None):
         """Gets temperature from traveling fire exposure at specific location, x_loc, and specific time t
         Inputs:
             t (float): calculation time in [min] - TBC
             x_rel_loc (float): Relative location of assessment point. It must be between 0 and 1. If None then ass_loc value used
             Defaults to None
+            subsample_mask (array_like): Mask for main parameters vectors applied to process a subsample. Use this when you
+            aim to calculate thermal response only for specific fires rather than the whole cohort. Defaults to None.
         Returns:
-            T_exp(array like): Vector of exposure temperatures with size N.
+            T_exp(array like): Vector of exposure temperatures with size N or sub sample size
         """
 
+        sub_params = self._subsample_params(mask=subsample_mask)
+
         if x_rel_loc is not None:
-            self.params['x_loc'] = x_rel_loc * self.params['c_long']
+            sub_params['x_loc'] = x_rel_loc * sub_params['c_long']
 
-        x_str = self.params['spr_rate']*t*60/1000
-        crit = x_str > self.params['c_long']
+        x_str = sub_params['spr_rate']*t*60/1000
+        crit = x_str > sub_params['c_long']
 
-        x_str_t = self.params['c_long'].copy()
+        x_str_t = sub_params['c_long'].copy()
         x_str_t[~crit] = x_str[~crit]
         # Calculate L_str
-        L_str_t = np.full(len(self.params['A_c']), -1, dtype=np.float64)
-        L_str_t[crit] = np.max([1 + (self.params['L_f'][crit] - x_str[crit])/self.params['c_long'][crit], np.zeros(len(self.params['A_c'][crit]))], axis=0)
-        L_str_t[~crit] = np.min([self.params['L_str'][~crit], x_str[~crit]/self.params['c_long'][~crit]], axis=0)
+        L_str_t = np.full(len(sub_params['A_c']), -1, dtype=np.float64)
+        L_str_t[crit] = np.max([1 + (sub_params['L_f'][crit] - x_str[crit])/sub_params['c_long'][crit], np.zeros(len(sub_params['A_c'][crit]))], axis=0)
+        L_str_t[~crit] = np.min([sub_params['L_str'][~crit], x_str[~crit]/sub_params['c_long'][~crit]], axis=0)
 
         #Calculate  position condition
-        dist = np.absolute(self.params['x_loc'] + 0.5*L_str_t*self.params['c_long'] - x_str_t)
-        crit = dist > 0.5*self.params['L_f']
+        dist = np.absolute(sub_params['x_loc'] + 0.5*L_str_t*sub_params['c_long'] - x_str_t)
+        crit = dist > 0.5*sub_params['L_f']
 
         #Calculate temperature
-        T_exp = np.zeros(len(self.params['A_c']), dtype=np.float64)
-        T_exp[crit] = self.params['T_amb'][crit] + ((5.38/self.params['h_c']) * (L_str_t*self.params['c_long']*self.params['c_short']*self.params['Q']/dist)**(2/3))[crit]
-        T_exp[~crit] = self.params['T_nf'][~crit]
-        T_exp[T_exp > self.params['T_nf']] = self.params['T_nf'][T_exp > self.params['T_nf']]
-        T_exp[self.params['burnout'] < t] = self.params['T_amb'][self.params['burnout'] < t]
+        T_exp = np.zeros(len(sub_params['A_c']), dtype=np.float64)
+        T_exp[crit] = sub_params['T_amb'][crit] + ((5.38/sub_params['h_c']) * (L_str_t*sub_params['c_long']*sub_params['c_short']*sub_params['Q']/dist)**(2/3))[crit]
+        T_exp[~crit] = sub_params['T_nf'][~crit]
+        T_exp[T_exp > sub_params['T_nf']] = sub_params['T_nf'][T_exp > sub_params['T_nf']]
+        T_exp[sub_params['burnout'] < t] = sub_params['T_amb'][sub_params['burnout'] < t]
 
         return T_exp
 
-    def get_time_temperature_curves(self, t_values, x_rel_loc=None):
+    def get_time_temperature_curves(self, t_values, x_rel_loc=None, subsample_mask=None):
         """Get time temperature curves for defined times and relative locations
         Inputs:
-            x_rel_loc (float): Relative location of assessment point. It must be between 0 and 1. If None then ass_loc value used
-            Defaults to None
+            x_rel_loc (float): Relative location of assessment point. It must be between 0 and 1. If None then ass_loc
+            value used. Defaults to None
+            subsample_mask (array_like): Mask for main parameters vectors applied to process a subsample. Use this when
+            you  aim to calculate thermal response only for specific fires rather than the whole cohort. Defaults to None.
         Returns:
-            curve_data (array like): Array of exposure temperatures with shape len(t_values) x N
-            """
+            curve_data (array like): Array of exposure temperatures with shape len(t_values) x N."""
 
-        # TODO Rewrite this to allow for subsampling and get_exposure method to allow subsampling
-        curve_data = np.full((len(t_values), len(self.params['A_c'])), -1, dtype=np.float64)
+        if subsample_mask is None:
+            curve_data = np.full((len(t_values), len(self.params['A_c'])), -1, dtype=np.float64)
+        else:
+            curve_data = np.full((len(t_values), sum(subsample_mask)), -1, dtype=np.float64)
         for i, t in enumerate(t_values):
-            curve_data[i, :] = self.get_exposure(t, x_rel_loc)
+            curve_data[i, 0:] = self.get_exposure(t, x_rel_loc, subsample_mask)
         return curve_data
 
     def perform_initial_calculations(self):
@@ -466,4 +493,4 @@ class TravelingISO16733(GenericRegime):
         """Discards/amends  bad samples which produce unphysical results due imperfections of the adopted
          methodology TODO this to be updated following statistical testing of outputs """
 
-        raise NotImplemented
+        raise NotImplementedError
