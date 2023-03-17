@@ -38,7 +38,7 @@ class GenericHT():
 
 class SteelEC3(GenericHT):
     # Some constants
-    PROT_THICK_RANGE = [0.0005, 0.1, 0.0005]
+    PROT_THICK_RANGE = [0.0005, 0.1, 0.0005]  # covers 1 to 240 min to standard fire curve up to 400 C limiting temperature
 
     def __init__(self, equivalent_curve, sect_prop, prot_prop, T_lim, eqv_max, dt, T_amb):
         super().__init__(equivalent_curve)
@@ -53,6 +53,7 @@ class SteelEC3(GenericHT):
         self.T_amb = T_amb
         self.eqv_max = eqv_max
         self.dt = dt  # time step size
+        self._issue_steel_hc_warn = [True, True] # Counter for issuing warning from steel hc only once #TODO
 
     def _process_sample_section_geometry(self, sect_prop):
         """Return section factor which is needed for heat transfer calculation
@@ -112,7 +113,7 @@ class SteelEC3(GenericHT):
         for i, t in enumerate(times):
             all_temps[i, :] = T_m
 
-            c_a = SteelEC3._calc_steel_hc(T_m)
+            c_a = self._calc_steel_hc(T_m)
             ro_a = SteelEC3._calc_steel_dens()
 
             T_g = self.ecr.get_temp(t+ self.dt)
@@ -160,7 +161,7 @@ class SteelEC3(GenericHT):
 
         return debug_results
 
-    def calc_thermal_response(self, equiv_exp, exposure_fxn, t_final, sample_size, output_history):
+    def calc_thermal_response(self, equiv_exp, exposure_fxn, t_final, sample_size, output_history, early_stop):
         """Calculates the thermal response of the sample section against an array of design fires representative
         of a single exposure regime. INTEGRATION TEST REQUIRED
 
@@ -169,10 +170,12 @@ class SteelEC3(GenericHT):
             be of the form f(t, *args) where t is the time. Return value to be in (degC)
             equiv_exp (float): equivalent exposure rating used to calculate appropriate protection thickness
             t_final (float): end analysis time
-            sample_size (int): sample size - IT MIGHT BE REMOVED
-            output_history (bool): Whether
+            sample_size (int): sample size
+            early_stop (float): Difference between maximum temperature and steel member temperature at which the computation
+            for this realization is stopped tp improve performance. NOTE: This works correctly only for heating regimes
+            with one expected peak.
 
-        Returns
+        Returns:
             max_temps (array like) - array of max temperatures,
             all_temps (array_like) - array of complete thermal response history in shape (sample size x times)"""
 
@@ -190,6 +193,7 @@ class SteelEC3(GenericHT):
         # Create initial temperature array equal to ambient of same shape
         T_m = np.full(sample_size, self.T_amb, dtype=np.float64)
         T_max = np.full(sample_size, self.T_amb, dtype=np.float64)
+        to_compute = np.full(sample_size, True)
 
         # Holder for results
         if output_history:
@@ -198,31 +202,35 @@ class SteelEC3(GenericHT):
             all_temps = None
 
         for i, t in enumerate(times):
-
             if all_temps is not None:
-                all_temps[i, :] = T_m
+                all_temps[i, to_compute] = T_m[to_compute]
 
-            c_a = SteelEC3._calc_steel_hc(T_m)
+            T_m_red = T_m[to_compute]
+
+            c_a = self._calc_steel_hc(T_m_red)
             ro_a = SteelEC3._calc_steel_dens()
 
             #TODO ENSURE CONSISTENT TIMES
-            T_g = exposure_fxn((t+self.dt)/60)
-            T_g_prev= exposure_fxn(t/60)
+            T_g = exposure_fxn((t+self.dt)/60, subsample_mask=to_compute)
+            T_g_prev= exposure_fxn(t/60, subsample_mask=to_compute)
 
             fi = c_p * ro_p * d_p * A_v / (c_a * ro_a)
-            dT = k_p * A_v * (T_g - T_m) * self.dt / ((d_p * c_a * ro_a) * (1 + fi / 3)) - (np.exp(fi/10)-1)*(T_g - T_g_prev)
-            #Some conditions can be applied here for early stop
+            dT = k_p * A_v * (T_g - T_m_red) * self.dt / ((d_p * c_a * ro_a) * (1 + fi / 3)) - (np.exp(fi/10)-1)*(T_g - T_g_prev)
 
-            T_m = T_m + dT
-            T_m[T_m < self.T_amb] = self.T_amb  # Temperature cannot go below ambient. TO BE CHECKED
-            T_max[T_max<T_m] = T_m[T_max<T_m]
+            T_m_red = T_m_red + dT
+            T_m_red[T_m_red < self.T_amb] = self.T_amb  # Temperature cannot go below ambient. TO BE CHECKED
+
+            T_m[to_compute] = T_m_red
+
+            to_compute = T_max - T_m < early_stop
+            T_max[T_max < T_m] = T_m[T_max < T_m]
+
+            if np.all(to_compute == False):
+                break
 
         return T_max, all_temps
 
-
-
-    @staticmethod
-    def _calc_steel_hc(T_m):
+    def _calc_steel_hc(self, T_m):
         """Vectorised calculation for steel heat capacity in accordance with BS EN 1993-1-2 Clause 3.4.1.2
         UNIT TEST REQUIRED
 
@@ -235,6 +243,8 @@ class SteelEC3(GenericHT):
         c_a = np.zeros_like(T_m)
         if np.any(T_m < 20):
             print('WARNING - Member temperature less than 20 degC. Outside definitions for steel heat capacity')
+            self._issue_steel_hc_warn[0] = False
+
         idx = T_m < 20
         c_a[idx] = 425 + 0.773 * T_m[idx] - 0.00169 * T_m[idx] ** 2 + 0.00000222 * T_m[idx] ** 3
 
@@ -250,8 +260,10 @@ class SteelEC3(GenericHT):
         idx = (T_m >= 900) & (T_m <= 1200)
         c_a[idx] = 650
 
-        if np.any(T_m > 1200):
+        if np.any(T_m > 1200) and self._issue_steel_hc_warn:
             print('WARNING - Member temperature more than 1200 degC. Outside definitions for steel heat capacity')
+            self._issue_steel_hc_warn[1] = False
+
         idx = T_m > 1200
         c_a[idx] = 650
 
