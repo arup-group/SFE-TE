@@ -358,8 +358,8 @@ class ProbControl:
         'fixed_point': FixedPointDistr,
         'normal': NormalDistr}
 
-    def __init__(self, inputs, seed):
-        self.inputs = inputs
+    def __init__(self, seed):
+
         self.rnd = ProbControl._initiate_random_seed(seed)
         self.sampled_inputs = {'values': {}, 'curves': {}, 'interim_params': {}}
         self.input_distr_curves = {}
@@ -368,19 +368,20 @@ class ProbControl:
     def _initiate_random_seed(seed):
         return np.random.default_rng(seed)
 
-    def sample_inputs(self, sample_size):
+    def sample_inputs(self, inputs, sample_size):
         """Samples requested inputs.
 
             Inputs:
                 sample_size (int): sample size
+                inputs (dict): dictionary containing all inputs to be sampled. See TGN.
 
             Returns:
                 sampled_inputs (dict): Dictionary with 3 keys: 'values' - contains 1 X sample size array of sampled
                 values; 'curves' - contains data for plotting target analytical curve; 'interim_params' - contains data
                 on calculated interim parameters for checking"""
 
-        for input in self.inputs:
-            distr = ProbControl.SUPPORTED_DISTR[self.inputs[input][0]](params=self.inputs[input][1:], generator=self.rnd)
+        for input in inputs:
+            distr = ProbControl.SUPPORTED_DISTR[inputs[input][0]](params=inputs[input][1:], generator=self.rnd)
             distr.calc_params()
             self.sampled_inputs['values'][input] = distr.sample(sample_size=sample_size)
             self.sampled_inputs['curves'][input] = distr.draw()

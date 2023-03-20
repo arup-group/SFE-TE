@@ -16,22 +16,22 @@ class GenericRegime:
         self._get_parameters(design_fire_inputs)
 
     def _get_relevant_design_fire_indices(self, design_fire_inputs):
-        raise NotImplemented
+        raise NotImplementedError
 
     def _get_parameters(self, design_fire_inputs):
-        raise NotImplemented
+        raise NotImplementedError
 
     def perform_initial_calculations(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def check_bad_samples(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def summarise_parameters(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_exposure(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def _subsample_params(self, mask):
         """Subsamples input parameters for given mask. This method is used to reduce amount of computation for
@@ -48,7 +48,7 @@ class GenericRegime:
             return {k: self.params[k][mask] for k in self.params}
 
 
-class FlashEC1(GenericRegime):
+class UniEC1(GenericRegime):
 
     REQUIRED_PARAMS = ['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'q_f_d', 't_lim', 'fabr_inrt']
     NAME = 'Uniform BS EN 1991-1-2'
@@ -66,11 +66,11 @@ class FlashEC1(GenericRegime):
 
     def _get_parameters(self, design_fire_inputs):
         """Samples only revenat data from design fires based on criteria. UNITE TEST REQUIRED"""
-        for param in FlashEC1.REQUIRED_PARAMS:
+        for param in UniEC1.REQUIRED_PARAMS:
             try:
                 self.params[param] = design_fire_inputs[param][self.relevent_df_indices]
             except KeyError:
-                print(f'Missing input parameter for {FlashEC1.NAME} methodology: {param}')
+                print(f'Missing input parameter for {UniEC1.NAME} methodology: {param}')
                 raise KeyError
 
 

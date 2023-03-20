@@ -40,7 +40,7 @@ class SteelEC3(GenericHT):
     # Some constants
     PROT_THICK_RANGE = [0.0005, 0.1, 0.0005]  # covers 1 to 240 min to standard fire curve up to 400 C limiting temperature
 
-    def __init__(self, equivalent_curve, sect_prop, prot_prop, T_lim, eqv_max, dt, T_amb):
+    def __init__(self, equivalent_curve, sect_prop, prot_prop, T_lim, eqv_max, dt, T_amb, optm_config):
         super().__init__(equivalent_curve)
 
         self.label = 'Steel EC3 HT'
@@ -54,6 +54,7 @@ class SteelEC3(GenericHT):
         self.eqv_max = eqv_max
         self.dt = dt  # time step size
         self._issue_steel_hc_warn = [True, True] # Counter for issuing warning from steel hc only once #TODO
+        self.optm_config = optm_config
 
     def _process_sample_section_geometry(self, sect_prop):
         """Return section factor which is needed for heat transfer calculation
