@@ -72,6 +72,7 @@ class UniEC1(GenericRegime):
             print(f'No design fires associated with {UniEC1.NAME} methodology.')
 
     def _get_parameters(self, design_fire_inputs):
+
         """Samples only revenat data from design fires based on criteria. UNITE TEST REQUIRED"""
         for param in UniEC1.REQUIRED_PARAMS:
             try:
@@ -79,7 +80,6 @@ class UniEC1(GenericRegime):
             except KeyError:
                 print(f'Missing input parameter for {UniEC1.NAME} methodology: {param}')
                 raise KeyError
-
 
 
     def perform_initial_calculations(self):
@@ -191,8 +191,6 @@ class UniEC1(GenericRegime):
                                  ((1160 - self.params['fabr_inrt'][crit])/1160)
 
         self.params['GA_lim'] = self.params['GA_lim']*self.params['k']
-
-        # print("k: ", self.params['k'])
 
     def _calc_t_max_vent(self):
         """Maximum time for ventilation controlled fire. See BS EN 1993-1-2 A.7, UNIT TEST REQUIRED"""
@@ -314,13 +312,14 @@ class UniEC1(GenericRegime):
         crit = sub_params['regime'] == 'F'
         t_str_heat[crit] = sub_params['GA_lim'][crit] * t/60
 
+
         #Calculate heating and colling temperatures. These are compared to avoid discontinuities
         # The logic is that if t_str is smaller than t_max_str the resulting temp will allways be bigger
         #than temp max calculated from the heating phase Similar approach is implemented in the SFE toolkit
         heat_phase_temp = self._calc_heat_phase_temp(t_str_heat)
         cool_phase_temp = self._calc_cooling_phase_temp(t, sub_params)
 
-        return np.min([heat_phase_temp, cool_phase_temp], axis=0)
+        return np.min([heat_phase_temp, cool_phase_temp], axis=0), t_str_heat, cool_phase_temp   # added t_str_heat, cool phase temp to retun for testing
 
     def get_time_temperature_curves(self, t_values, subsample_mask):
         """Get time temperature curves"""
