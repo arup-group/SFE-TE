@@ -31,6 +31,7 @@ class AssessmentCase:
         self.rel_interp_f = None
         self._eqv_assess_range = None
         self.outputs = {'reliability_curve': [],
+                        'reliability_conf': None,
                         'thermal_response': [],
                         'equiv': None,
                         'equiv_conf': None,
@@ -79,10 +80,19 @@ class AssessmentCase:
         self.outputs['equiv_conf'] = np.percentile(boot_res, [2.5, 97.5])
 
     def _sample_sensitivity_full(self):
-        boot_res = []
+        boot_res = np.zeros((self.configs['bootstrap_reps'], len(self._eqv_assess_range)))
+        self.outputs['thermal_response'] = np.array(self.outputs['thermal_response'])
         for k in range(self.configs['bootstrap_reps']):
-            pass
+            rnd_ind = np.random.choice(range(self.outputs['thermal_response'].shape[1]), self.outputs['thermal_response'].shape[1], replace=True)
+            new_resp = self.outputs['thermal_response'][:, rnd_ind]
+            boot_res[k, :] = np.sum(new_resp < self.lim_factor, axis=1)/new_resp.shape[1]
+        self.outputs['reliability_conf'] = np.percentile(boot_res, [2.5, 97.5], axis=0).T
 
+        #calc confidence at target by interpolation
+        self.outputs['equiv_conf'] = [0,0]
+        for i in range(2):
+            f = interpolate.interp1d(self.outputs['reliability_conf'][:,i], self._eqv_assess_range)
+            self.outputs['equiv_conf'][i] = f(self.risk_model['target'])
 
     def _assess_single_equiv(self, equiv_exp, for_optimisation = False):
         #TODO EXPLAIN DOCUMENTATION
@@ -148,7 +158,8 @@ class AssessmentCase:
         """ Analysis sequence for full analysis"""
         self._setup_analysis_parameters()
         self._assess_full_eqv_range()
-        # self._interpolate_equiv()
+        self._interpolate_equiv()
+        self._sample_sensitivity_full()
 
     def run_analysis(self):
         """Starts analysis"""
