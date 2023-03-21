@@ -38,7 +38,7 @@ class GenericHT():
 
 class SteelEC3(GenericHT):
     # Some constants
-    PROT_THICK_RANGE = [0.0005, 0.1, 0.0005]  # covers 1 to 240 min to standard fire curve up to 400 C limiting temperature
+    PROT_THICK_RANGE = [0.0001, 0.1, 0.0005]  # covers 1 to 240 min to standard fire curve up to 400 C limiting temperature
 
     def __init__(self, equivalent_curve, sect_prop, prot_prop, T_lim, eqv_max, dt, T_amb, optm_config):
         super().__init__(equivalent_curve)
@@ -123,6 +123,7 @@ class SteelEC3(GenericHT):
             fi = c_p * ro_p * prot_thick * A_v / (c_a * ro_a)
 
             dT = k_p * A_v * (T_g - T_m) * self.dt / ((prot_thick * c_a * ro_a) * (1 + fi / 3)) - (np.exp(fi/10)-1)*(T_g - T_g_prev)
+            dT[(dT < 0) & (T_g - T_g_prev > 0)] = 0  # enforcing condition for BS EN 1993-1-2 eq. 4.27
             T_m = T_m + dT
             T_m[T_m < self.T_amb] = self.T_amb  # Temperature cannot go below ambient.
 
@@ -217,6 +218,7 @@ class SteelEC3(GenericHT):
 
             fi = c_p * ro_p * d_p * A_v / (c_a * ro_a)
             dT = k_p * A_v * (T_g - T_m_red) * self.dt / ((d_p * c_a * ro_a) * (1 + fi / 3)) - (np.exp(fi/10)-1)*(T_g - T_g_prev)
+            dT[(dT<0) & (T_g - T_g_prev > 0)] = 0 # enforcing condition for BS EN 1993-1-2 eq. 4.27
 
             T_m_red = T_m_red + dT
             T_m_red[T_m_red < self.T_amb] = self.T_amb  # Temperature cannot go below ambient. TO BE CHECKED
@@ -242,7 +244,7 @@ class SteelEC3(GenericHT):
             T_m = np.asarray(T_m, dtype=np.float64)
 
         c_a = np.zeros_like(T_m)
-        if np.any(T_m < 20):
+        if np.any(T_m < 20) and self._issue_steel_hc_warn[0]:
             print('WARNING - Member temperature less than 20 degC. Outside definitions for steel heat capacity')
             self._issue_steel_hc_warn[0] = False
 
@@ -261,8 +263,8 @@ class SteelEC3(GenericHT):
         idx = (T_m >= 900) & (T_m <= 1200)
         c_a[idx] = 650
 
-        if np.any(T_m > 1200) and self._issue_steel_hc_warn:
-            print('WARNING - Member temperature more than 1200 degC. Outside definitions for steel heat capacity')
+        if np.any(T_m > 1200) and self._issue_steel_hc_warn[1]:
+            print('WARNING - Member temperature more than 1200 degC. Outside definitions for steel heat capacity. Assigned value: 650 J/kgK.')
             self._issue_steel_hc_warn[1] = False
 
         idx = T_m > 1200

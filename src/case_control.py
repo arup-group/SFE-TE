@@ -29,6 +29,7 @@ class AssessmentCase:
         self.optm_result = None
         self.max_optm_fxn = None
         self.rel_interp_f = None
+        self._eqv_assess_range = None
         self.outputs = {'reliability_curve': [],
                         'thermal_response': [],
                         'equiv': None,
@@ -60,7 +61,7 @@ class AssessmentCase:
         """Checks whether convergence is within tolerance limits"""
         self.outputs['success_conv'] = self.optm_result.fun < self.ht_model.optm_config['tol']
 
-    def _interpolate_equiv_quick(self):
+    def _interpolate_equiv(self):
         """Interpolates convergence results to improve accuracy"""
 
         self.outputs['reliability_curve'] = np.array(self.outputs['reliability_curve'])
@@ -77,28 +78,17 @@ class AssessmentCase:
 
         self.outputs['equiv_conf'] = np.percentile(boot_res, [2.5, 97.5])
 
-    def run_analysis(self):
-        """Starts analysis"""
-        if self.analysis_type is 'quick':
-            self._quick_analysis()
-        elif self.analysis_type is 'full':
+    def _sample_sensitivity_full(self):
+        boot_res = []
+        for k in range(self.configs['bootstrap_reps']):
             pass
-
-    def _quick_analysis(self):
-        """ Analysis sequences for quick analysis"""
-        self._setup_analysis_parameters()
-        self.max_optm_fxn = [10000]
-        self.optm_result = self._optimise_to_limiting_factor()
-        self._assess_convergence_success()
-        self._interpolate_equiv_quick()
-        self._sample_sensitivity_quick()
-
 
 
     def _assess_single_equiv(self, equiv_exp, for_optimisation = False):
         #TODO EXPLAIN DOCUMENTATION
 
         thermal_response = []
+        thermal_hist = []
         for regime in self.heating_regimes:
             T_max, T_hist = self.ht_model.calc_thermal_response(
                 equiv_exp=equiv_exp,
@@ -106,8 +96,9 @@ class AssessmentCase:
                 t_final=np.max(regime.params['burnout']),
                 sample_size=len(regime.params['burnout']),
                 output_history=False,  # set to default. Use True only for debugging
-                early_stop=15)
+                early_stop=20)
             thermal_response.append(T_max)
+            thermal_hist.append(T_hist)
 
         thermal_response = np.concatenate(thermal_response)
         target_temp = np.percentile(thermal_response, 100 * self.risk_model['target'])
@@ -124,9 +115,10 @@ class AssessmentCase:
                 except IndexError:
                     self.outputs['thermal_response'].append(thermal_response)
             return optm_fxn
-
         else:
             self.outputs['thermal_response'].append(thermal_response)
+            self.outputs['t_hist'] = thermal_hist
+            print(f'Equiv: {equiv_exp}, Reliability: {reliability}')
 
     def _optimise_to_limiting_factor(self):
         return optimize.minimize_scalar(
@@ -135,6 +127,35 @@ class AssessmentCase:
             method='bounded',
             options={'maxiter': self.ht_model.optm_config['max_itr'],
                      'xatol': self.ht_model.optm_config['tol']})
+
+    def _assess_full_eqv_range(self):
+
+        self._eqv_assess_range = np.arange(5, self.configs['eqv_max'], self.configs['eqv_step'])
+        self._eqv_assess_range = np.append(self._eqv_assess_range, self.configs['eqv_max'])
+        for t_eqv in self._eqv_assess_range:
+            self._assess_single_equiv(t_eqv, for_optimisation=False)
+
+    def _quick_analysis(self):
+        """ Analysis sequence for quick analysis"""
+        self._setup_analysis_parameters()
+        self.max_optm_fxn = [10000]
+        self.optm_result = self._optimise_to_limiting_factor()
+        self._assess_convergence_success()
+        self._interpolate_equiv()
+        self._sample_sensitivity_quick()
+
+    def _full_analysis(self):
+        """ Analysis sequence for full analysis"""
+        self._setup_analysis_parameters()
+        self._assess_full_eqv_range()
+        # self._interpolate_equiv()
+
+    def run_analysis(self):
+        """Starts analysis"""
+        if self.analysis_type is 'quick':
+            self._quick_analysis()
+        elif self.analysis_type is 'full':
+            self._full_analysis()
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
