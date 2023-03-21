@@ -1,6 +1,7 @@
 import heating_regimes as hr
 import numpy as np
 from scipy import optimize
+from scipy import interpolate
 
 class AssessmentCase:
     HEATING_REGIMES = {
@@ -19,7 +20,7 @@ class AssessmentCase:
         self.lim_factor = lim_factor  # limiting temperature
         self.analysis_type = analysis_type # quick of full
         self.sample_size = sample_size
-        self.configs = configs  # Analysis configs
+        self.configs = configs  # Analysis configs #TODO Tidy up configurations
 
         # Variables which will be updated
         self.case_root_folder = None
@@ -27,9 +28,12 @@ class AssessmentCase:
         self.inputs = None
         self.optm_result = None
         self.max_optm_fxn = None
+        self.rel_interp_f = None
         self.outputs = {'reliability_curve': [],
                         'thermal_response': [],
-                        'equiv': None}
+                        'equiv': None,
+                        'equiv_conf': None,
+                        'success_conv': None}
 
         self._setup_save_folder_structure(save_loc)
 
@@ -51,25 +55,42 @@ class AssessmentCase:
                     design_fire_inputs=self.inputs['values'], **self.heating_regimes_inputs[regime]))
             self.heating_regimes[i].perform_initial_calculations()
 
-    def _compute_equivalence(self):
-        pass
+    def _assess_convergence_success(self):
+        """Checks whether convergence is within tolerance limits"""
+        self.outputs['success_conv'] = self.optm_result.fun < self.ht_model.optm_config['tol']
 
-    def _assess_sample_sensitivity(self):
-        pass
+    def _interpolate_equiv_quick(self):
+        """Interpolates convergence results to improve accuracy"""
+
+        self.outputs['reliability_curve'] = np.array(self.outputs['reliability_curve'])
+        self.outputs['reliability_curve'] = self.outputs['reliability_curve'][self.outputs['reliability_curve'][:, 0].argsort()]
+        self.rel_interp_f = interpolate.interp1d(self.outputs['reliability_curve'][:, 1], self.outputs['reliability_curve'][:, 0])
+        self.outputs['equiv'] = self.rel_interp_f(self.lim_factor)
+
+    def _sample_sensitivity_quick(self):
+        boot_res = []
+        for k in range(self.configs['bootstrap_reps']):
+            boot = np.random.choice(self.outputs['thermal_response'][0], len(self.outputs['thermal_response'][0]), replace=True)
+            boot_res.append(np.percentile(boot, 100*self.risk_model['target']))
+        boot_res = self.rel_interp_f(boot_res)
+
+        self.outputs['equiv_conf'] = np.percentile(boot_res, [2.5, 97.5])
 
     def run_analysis(self):
         """Starts analysis"""
-        self._setup_analysis_parameters()
-
         if self.analysis_type is 'quick':
-            self.max_optm_fxn = [10000]
-            self.optm_result = self._optimise_to_limiting_factor()
-        elif self.analysis_type is 'complete':
+            self._quick_analysis()
+        elif self.analysis_type is 'full':
             pass
 
-        # Assess sensitivity
-        # Assess individual equivalence
-
+    def _quick_analysis(self):
+        """ Analysis sequences for quick analysis"""
+        self._setup_analysis_parameters()
+        self.max_optm_fxn = [10000]
+        self.optm_result = self._optimise_to_limiting_factor()
+        self._assess_convergence_success()
+        self._interpolate_equiv_quick()
+        self._sample_sensitivity_quick()
 
 
 
