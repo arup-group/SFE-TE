@@ -54,6 +54,7 @@ class AssessmentCase:
                 AssessmentCase.HEATING_REGIMES[regime](
                     design_fire_inputs=self.inputs['values'], **self.heating_regimes_inputs[regime]))
             self.heating_regimes[i].perform_initial_calculations()
+            self.heating_regimes[i].check_bad_samples()
 
     def _assess_convergence_success(self):
         """Checks whether convergence is within tolerance limits"""

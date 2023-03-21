@@ -10,6 +10,7 @@ class GenericRegime:
     def __init__(self, design_fire_inputs, crit_value):
         self.crit_value = crit_value
         self.relevent_df_indices = None
+        self.amended_df_indices = {}
         self.params = {}
 
         self._get_relevant_design_fire_indices(design_fire_inputs)
@@ -62,7 +63,7 @@ class UniEC1(GenericRegime):
         """Samples only relevant data from design fires based on criteria
         UNIT TEST REQUIRED"""
         # Get indeces
-        self.relevent_df_indices = np.where(design_fire_inputs['A_c'] < self.crit_value)
+        self.relevent_df_indices = np.where(design_fire_inputs['A_c'] < self.crit_value)[0]
 
     def _get_parameters(self, design_fire_inputs):
         """Samples only revenat data from design fires based on criteria. UNITE TEST REQUIRED"""
@@ -205,10 +206,6 @@ class UniEC1(GenericRegime):
         UNIT TEST REQUIRED"""
         self.params['max_temp'] = self._calc_heat_phase_temp(self.params['t_str_max_heat'])
 
-    def _calc_burnout(self):
-        """Calculates burnout time based on the input parameters"""
-        pass
-
     def _calc_cooling_phase_temp(self, t, sub_params):
         """Calculates cooling phase temperatures in accordance with BS EN 1991-1-2 Annex A (11)
 
@@ -316,7 +313,7 @@ class UniEC1(GenericRegime):
         """Discards/amends  bad samples which produce unphysical results due imperfections of the adopted
          methodology TODO this to be updated following statistical testing of outputs """
 
-        raise NotImplementedError
+        pass
 
 
 class TravelingISO16733(GenericRegime):
@@ -325,16 +322,17 @@ class TravelingISO16733(GenericRegime):
     NAME = 'Traveling ISO 16733-2'
     DESCRIPTION = 'Some description'
 
-    def __init__(self,design_fire_inputs, crit_value, assess_loc, max_travel_path):
+    def __init__(self,design_fire_inputs, crit_value, assess_loc, max_travel_path, max_fire_duration):
         super().__init__(design_fire_inputs, crit_value)
         self.assess_loc = assess_loc  # Location of assessment as a fraction of travel path
         self.max_travel_path = max_travel_path  # Location of assessment as a fraction of travel path
+        self.max_fire_duration = max_fire_duration
 
     def _get_relevant_design_fire_indices(self, design_fire_inputs):
         """Samples only relevant data from design fires based on criteria
         UNIT TEST REQUIRED"""
         # Get indeces
-        self.relevent_df_indices = np.where(design_fire_inputs['A_c'] > self.crit_value)
+        self.relevent_df_indices = np.where(design_fire_inputs['A_c'] > self.crit_value)[0]
 
     def _get_parameters(self, design_fire_inputs):
         """Samples only relevant data from design fires based on criteria. UNITE TEST REQUIRED"""
@@ -409,6 +407,22 @@ class TravelingISO16733(GenericRegime):
         h_c = self.params['h_c'][~crit]
         L_f = self.params['L_f'][~crit]
         self.params['T_nf'][~crit] = T_amb + (T_nf_max * (2*r_x1+L_f) - 2*T_amb*r_x2)/f + (32.28*(Q*A_f)**(2/3) * ((0.5*f)**(1/3) - r_x2**(1/3)))/(f*h_c)
+
+    def _amend_long_duration_fires(self):
+        """This method amends parameters for fires where the total duration is more than a user input treshold.
+        Motivations for this is to reflect on the reasonable period for fire duration before intervention and improve
+        performance.Amendments consider changing 'c_long' parameter to the travel movement at time of maximum duration
+        and updating the other parameters: x_loc, L_str accordingly."""
+
+        crit = self.params['burnout'] > self.max_fire_duration
+        self.amended_df_indices['long_duration'] = self.relevent_df_indices[np.where(crit)[0]] # saved the indices of the amended
+        print(f'{sum(crit)} amended design fires with duration greater than {self.max_fire_duration} min.')
+
+        #Estimate required c_long toachieve maximum burnout time
+        self.params['c_long'][crit] = 60*0.001*self.max_fire_duration*self.params['spr_rate'][crit] - self.params['L_f'][crit]
+        self.params['x_loc'][crit] = self.assess_loc * self.params['c_long'][crit]  # Update x_loc
+        self.params['L_str'][crit] = self.params['L_f'][crit] / self.params['c_long'][crit] # Update L_str
+        self.params['burnout'][crit] = 1000 * (self.params['c_long'][crit] + self.params['L_f'][crit]) / self.params['spr_rate'][crit] / 60
 
     def get_exposure(self, t, x_rel_loc=None, subsample_mask=None):
         """Gets temperature from traveling fire exposure at specific location, x_loc, and specific time t
@@ -491,6 +505,8 @@ class TravelingISO16733(GenericRegime):
 
     def check_bad_samples(self):
         """Discards/amends  bad samples which produce unphysical results due imperfections of the adopted
-         methodology TODO this to be updated following statistical testing of outputs """
+         methodology"""
 
-        raise NotImplementedError
+        self._amend_long_duration_fires()
+        #TODO add aditional checks based on statistical testing
+
