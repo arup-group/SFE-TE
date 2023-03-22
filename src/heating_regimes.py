@@ -298,13 +298,21 @@ class UniEC1(GenericRegime):
             curve_data[i, :] = self.get_exposure(t, subsample_mask)
         return curve_data
 
-    def summarise_parameters(self):
-        """Returns all calculated parameters in human readable table format"""
+    def summarise_parameters(self, param_list='concise'):
+        """Returns all calculated parameters in human readable table format
+        Inputs:
+            param_list (str): accepts either 'full' or 'concise' to define different interm. parameterts to report
+             default is concise."""
         data = pd.DataFrame.from_dict(self.params)
-        col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac', 'remain_frac',
-                    'A_v', 'Of_max', 'Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_max_vent', 't_lim', 't_max_fuel',
-                    'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 't_str_max_heat', 't_str_max_cool_vent', 't_str_max_cool_fuel',
-                    'max_temp', 'burnout']
+        if param_list is 'full':
+            col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac', 'remain_frac',
+                        'A_v', 'Of_max', 'Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_max_vent', 't_lim', 't_max_fuel',
+                        'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 't_str_max_heat', 't_str_max_cool_vent', 't_str_max_cool_fuel',
+                        'max_temp', 'burnout']
+        elif param_list is 'concise':
+            col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac',
+                        'remain_frac','A_v','Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_lim',
+                        'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 'max_temp', 'burnout']
         data = data[col_list]
         data = data.set_index(np.array(self.relevent_df_indices).flatten())
         return data
@@ -494,11 +502,18 @@ class TravelingISO16733(GenericRegime):
         self._calc_interim_parameters_for_near_field_temp()
         self._calc_average_near_field_temp()
 
-    def summarise_parameters(self):
-        """Returns all calculated parameters in human readable table format"""
+    def summarise_parameters(self, param_list='concise'):
+        """Returns all calculated parameters in human readable table format
+        Inputs:
+            param_list (str): accepts either 'full' or 'concise' to define different interm. parameterts to report
+             default is concise."""
         data = pd.DataFrame.from_dict(self.params)
-        col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'T_amb', 'flap_angle',
-                    't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'f', 'r_0', 'r_x1', 'r_x2', 'T_nf_max', 'T_nf', 'burnout']
+        if param_list is 'full':
+            col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'T_amb', 'flap_angle',
+                        't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'f', 'r_0', 'r_x1', 'r_x2', 'T_nf_max', 'T_nf', 'burnout']
+        elif param_list is 'concise':
+            col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'flap_angle',
+                        't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'T_nf_max', 'T_nf', 'burnout']
         data = data[col_list]
         data = data.set_index(np.array(self.relevent_df_indices).flatten())
         return data
