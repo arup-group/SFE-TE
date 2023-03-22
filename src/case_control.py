@@ -36,7 +36,7 @@ class AssessmentCase:
                         'eqv_req': None,
                         'eqv_req_conf': None,
                         'success_conv': None,
-                        'max_temp': None,
+                        'max_el_resp': None,
                         'fire_eqv': []}
 
         self._setup_save_folder_structure(save_loc)
@@ -96,14 +96,14 @@ class AssessmentCase:
             f = interpolate.interp1d(self.outputs['reliability_conf'][:,i], self._eqv_assess_range)
             self.outputs['eqv_req_conf'][i] = f(self.risk_model['target'])
 
-    def _estimate_max_temp(self):
+    def _estimate_max_elem_response(self):
         f = interpolate.interp1d(self._eqv_assess_range, self.outputs['thermal_response'], axis=0)
-        self.outputs['max_temp'] = f(self.outputs['eqv_req'])
+        self.outputs['max_el_resp'] = f(self.outputs['eqv_req'])
 
     def _estimate_fire_eqv(self):
         for i in range(self.outputs['thermal_response'].shape[1]):
             f = interpolate.interp1d(
-                self.outputs['thermal_response'][:, i], self._eqv_assess_range, fill_value=(2, self.configs['eqv_max']+30), bounds_error=False)
+                self.outputs['thermal_response'][:, i], self._eqv_assess_range, fill_value=(self.configs['eqv_max']+30, 2), bounds_error=False)
             self.outputs['fire_eqv'].append(f(self.lim_factor))
         self.outputs['fire_eqv'] = np.array(self.outputs['fire_eqv']).round(0)
 
@@ -173,7 +173,7 @@ class AssessmentCase:
         self._assess_full_eqv_range()
         self._interpolate_equiv()
         self._sample_sensitivity_full()
-        self._estimate_max_temp()
+        self._estimate_max_elem_response()
         self._estimate_fire_eqv()
 
     def run_analysis(self):
@@ -182,6 +182,23 @@ class AssessmentCase:
             self._quick_analysis()
         elif self.analysis_type is 'full':
             self._full_analysis()
+
+    def _save_design_fires_data(self, debug_return):
+        """Processes and saves design fire database"""
+        data = len(self.heating_regimes)*[0]
+        begin = 0
+        for i, regime in enumerate(self.heating_regimes):
+            data[i] = regime.summarise_parameters(param_list='concise')
+            data[i]['max_el_resp'] = self.outputs['max_el_resp'][begin:begin+len(data[i])]
+            data[i]['fire_eqv'] = self.outputs['fire_eqv'][begin:begin + len(data[i])]
+            data[i] = data[i].round(3)
+            begin = len(data[i])
+
+            #TODO add saving statement once confirm folder structure
+
+        if debug_return:
+            return data
+
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
