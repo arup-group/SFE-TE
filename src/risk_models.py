@@ -1,4 +1,7 @@
-
+from scipy import interpolate
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
 class GenericRiskModel:
 
@@ -44,9 +47,49 @@ class Kirby(GenericRiskModel):
         self.struct_reliability = (self.total_reliability - self.sprinkler_reliability/100)/(1 - self.sprinkler_reliability/100)
 
 
-    def _sprinkler_sensitivity(self, reliability_curve, plot_debug, save_loc):
+    def _sprinkler_sensitivity(self, reliability_curve, conf_curve, debug_show):
         """Performs sprinkler sensitivity study"""
-        pass
+
+        spr_rel_range = np.arange(0, 100, 1)/100
+        struct_rel = (self.total_reliability - spr_rel_range)/(1 - spr_rel_range)
+        spr_rel_range = spr_rel_range[struct_rel > 0]
+        struct_rel = struct_rel[struct_rel > 0]
+
+
+        #compute reliability
+        f = interpolate.interp1d(reliability_curve[:, 2], reliability_curve[:, 0], fill_value=-1, bounds_error=False)
+        reliability = f(struct_rel)
+
+        #calc confidence at target by interpolation
+        conf = [0, 0]
+        for i in range(2):
+            f = interpolate.interp1d(conf_curve[:, i], reliability_curve[:, 0], fill_value=-1, bounds_error=False)
+            conf[i] = f(struct_rel)
+
+        sns.set()
+        fig, ax = plt.subplots()
+
+        ax.plot(spr_rel_range[reliability != -1]*100, reliability[reliability != -1],
+                color='black',
+                label='Target severity requirement')
+        ax.plot(spr_rel_range[conf[0] != -1]*100, conf[0][conf[0] != -1],
+                color='grey',
+                linestyle='dashed',
+                label='95% conf. interval',
+                linewidth=1)
+        ax.plot(spr_rel_range[conf[1] != -1]*100, conf[1][conf[1] != -1],
+                color='grey',
+                linestyle='dashed',
+                linewidth=1)
+
+        ax.set_xlabel('Sprinkler reliability (%)')
+        ax.set_ylabel('Exposure rating (min)')
+        ax.legend(prop={'size': 9})
+
+        # TODO Save figure
+        if debug_show:
+            fig.show()
+
 
     def risk_sensitivity_study(self, **kwargs):
         self._sprinkler_sensitivity(**kwargs)

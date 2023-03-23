@@ -179,6 +179,10 @@ class AssessmentCase:
         self._estimate_max_elem_response()
         self._estimate_fire_eqv()
         self._plot_reliability_curve(debug_show=True)
+        self.risk_model._sprinkler_sensitivity(
+            reliability_curve=self.outputs['reliability_curve'],
+            conf_curve=self.outputs['reliability_conf'],
+            debug_show=True)
 
     def run_analysis(self):
         """Starts analysis"""
