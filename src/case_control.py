@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 class AssessmentCase:
+
     HEATING_REGIMES = {
         'Uniform BS EN 1991-1-2': hr.UniEC1,
         'Traveling ISO 16733-2': hr.TravelingISO16733}
@@ -78,7 +79,7 @@ class AssessmentCase:
         boot_res = []
         for k in range(self.configs['bootstrap_reps']):
             boot = np.random.choice(self.outputs['thermal_response'][0], len(self.outputs['thermal_response'][0]), replace=True)
-            boot_res.append(np.percentile(boot, 100*self.risk_model['target']))
+            boot_res.append(np.percentile(boot, 100*self.risk_model.struct_reliability))
         boot_res = self.rel_interp_f(boot_res)
 
         self.outputs['eqv_req_conf'] = np.percentile(boot_res, [2.5, 97.5])
@@ -96,7 +97,7 @@ class AssessmentCase:
         self.outputs['eqv_req_conf'] = [0, 0]
         for i in range(2):
             f = interpolate.interp1d(self.outputs['reliability_conf'][:,i], self._eqv_assess_range)
-            self.outputs['eqv_req_conf'][i] = f(self.risk_model['target'])
+            self.outputs['eqv_req_conf'][i] = f(self.risk_model.struct_reliability)
 
     def _estimate_max_elem_response(self):
         f = interpolate.interp1d(self._eqv_assess_range, self.outputs['thermal_response'], axis=0)
@@ -126,7 +127,7 @@ class AssessmentCase:
             thermal_hist.append(T_hist)
 
         thermal_response = np.concatenate(thermal_response)
-        target_temp = np.percentile(thermal_response, 100 * self.risk_model['target'])
+        target_temp = np.percentile(thermal_response, 100 * self.risk_model.struct_reliability)
         reliability = np.sum(thermal_response < self.lim_factor)/len(thermal_response) #TODO Check this formula
         self.outputs['reliability_curve'].append([equiv_exp, target_temp, reliability])
 
@@ -177,6 +178,7 @@ class AssessmentCase:
         self._sample_sensitivity_full()
         self._estimate_max_elem_response()
         self._estimate_fire_eqv()
+        self._plot_reliability_curve(debug_show=True)
 
     def run_analysis(self):
         """Starts analysis"""
@@ -201,7 +203,7 @@ class AssessmentCase:
         if debug_return:
             return data
 
-    def plot_reliability_curve(self, debug_show):
+    def _plot_reliability_curve(self, debug_show):
 
         sns.set()
         fig, ax = plt.subplots()
@@ -233,7 +235,7 @@ class AssessmentCase:
                 color='grey',
                 linestyle='dashed',
                 linewidth=1)
-        ax.hlines(y=self.risk_model['target'],
+        ax.hlines(y=self.risk_model.struct_reliability,
                   xmin=0,
                   xmax=300,
                   color='red',
@@ -242,6 +244,7 @@ class AssessmentCase:
 
         ax.set_ylim([0, 1.1])
         ax.set_xlim([0, self.outputs['reliability_curve'][self.outputs['reliability_curve'][:, 2] < 0.996][-1, 0]])
+        ax.set_xticks(np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 10))
         ax.set_yticks(np.arange(0, 1.1, 0.1))
         ax.set_xlabel('Equivalent fire severity rating (min)')
         ax.set_ylabel('Structural reliability')
@@ -262,7 +265,4 @@ class AssessmentCase:
 
     def process_plots(self):
         """Processes and saves relevant plots"""
-
-
-
         pass
