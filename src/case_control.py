@@ -2,6 +2,8 @@ import heating_regimes as hr
 import numpy as np
 from scipy import optimize
 from scipy import interpolate
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class AssessmentCase:
     HEATING_REGIMES = {
@@ -185,6 +187,7 @@ class AssessmentCase:
 
     def _save_design_fires_data(self, debug_return):
         """Processes and saves design fire database"""
+
         data = len(self.heating_regimes)*[0]
         begin = 0
         for i, regime in enumerate(self.heating_regimes):
@@ -193,11 +196,60 @@ class AssessmentCase:
             data[i]['fire_eqv'] = self.outputs['fire_eqv'][begin:begin + len(data[i])]
             data[i] = data[i].round(3)
             begin = len(data[i])
-
             #TODO add saving statement once confirm folder structure
 
         if debug_return:
             return data
+
+    def plot_reliability_curve(self, debug_show):
+
+        sns.set()
+        fig, ax = plt.subplots()
+
+        # calculate hist scale factor for legibility
+        binned = list(np.histogram(self.outputs['fire_eqv'],
+                                   bins=int(self.configs['eqv_max'] / self.configs['eqv_step']),
+                                   range=[0, self.configs['eqv_max']]))
+        factor = 0.5 / np.max(binned[0] / self.sample_size)
+
+        begin = 0
+        for i, regime in enumerate(self.heating_regimes):
+            data = self.outputs['fire_eqv'][begin:begin + len(regime.params['A_c'])]
+            binned = list(np.histogram(data, bins=int(self.configs['eqv_max'] / self.configs['eqv_step']),
+                                       range=[0, self.configs['eqv_max']]))
+            binned[0] = np.array(binned[0]) / self.sample_size * factor
+            ax.bar(x=binned[1][:-1], height=binned[0], width=np.diff(binned[1]), align='edge', alpha=0.5,
+                   label=regime.NAME)
+            begin = len(regime.params['A_c'])
+        ax.plot(self.outputs['reliability_curve'][:, 0], self.outputs['reliability_curve'][:, 2],
+                color='black',
+                label='Reliability ECDF')
+        ax.plot(self.outputs['reliability_curve'][:, 0], self.outputs['reliability_conf'][:, 0],
+                color='grey',
+                linestyle='dashed',
+                linewidth=1,
+                label='95% conf. interval')
+        ax.plot(self.outputs['reliability_curve'][:, 0], self.outputs['reliability_conf'][:, 1],
+                color='grey',
+                linestyle='dashed',
+                linewidth=1)
+        ax.hlines(y=self.risk_model['target'],
+                  xmin=0,
+                  xmax=300,
+                  color='red',
+                  linestyle='dashed',
+                  label='Reliability target')
+
+        ax.set_ylim([0, 1.1])
+        ax.set_xlim([0, self.outputs['reliability_curve'][self.outputs['reliability_curve'][:, 2] < 0.996][-1, 0]])
+        ax.set_yticks(np.arange(0, 1.1, 0.1))
+        ax.set_xlabel('Equivalent fire severity rating (min)')
+        ax.set_ylabel('Structural reliability')
+        ax.legend(prop={'size': 9})
+
+        #TODO Save figure
+        if debug_show:
+            fig.show()
 
 
     def report_to_main(self):
@@ -210,4 +262,7 @@ class AssessmentCase:
 
     def process_plots(self):
         """Processes and saves relevant plots"""
+
+
+
         pass
