@@ -54,6 +54,7 @@ class UniEC1(GenericRegime):
 
     REQUIRED_PARAMS = ['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'q_f_d', 't_lim', 'fabr_inrt']
     NAME = 'Uniform BS EN 1991-1-2'
+    SAVE_NAME = 'uni_bs_en_1991_1_2'
     DESCRIPTION = 'Some description'
 
     def __init__(self, design_fire_inputs, crit_value, Of_limits):
@@ -333,6 +334,7 @@ class TravelingISO16733(GenericRegime):
 
     REQUIRED_PARAMS = ['A_c', 'h_c', 'c_ratio', 'q_f_d', 'Q', 'spr_rate', 'flap_angle', 'T_nf_max', 'T_amb']
     NAME = 'Traveling ISO 16733-2'
+    SAVE_NAME = 'trav_iso_16733_2'
     DESCRIPTION = 'Some description'
 
     def __init__(self,design_fire_inputs, crit_value, assess_loc, max_travel_path, max_fire_duration):

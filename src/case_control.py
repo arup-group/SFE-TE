@@ -55,9 +55,6 @@ class AssessmentCase:
         for subf in subfolders:
             os.makedirs(os.path.join(self.save_loc, subf), exist_ok=True)
 
-
-        pass
-
     def _setup_analysis_parameters(self):
         #Draw MC parameters
         self.inputs = self.mc_engine.sample_inputs(inputs=self.input_defs, sample_size=self.sample_size)
@@ -194,6 +191,7 @@ class AssessmentCase:
             reliability_curve=self.outputs['reliability_curve'],
             conf_curve=self.outputs['reliability_conf'],
             debug_show=True)
+        self._save_design_fires_data()
 
     def run_analysis(self):
         """Starts analysis"""
@@ -202,24 +200,24 @@ class AssessmentCase:
         elif self.analysis_type is 'full':
             self._full_analysis()
 
-    def _save_design_fires_data(self, debug_return):
+    def _save_design_fires_data(self, debug_return=False):
         """Processes and saves design fire database"""
 
         data = len(self.heating_regimes)*[0]
         begin = 0
         for i, regime in enumerate(self.heating_regimes):
-
             if regime.is_empty: continue # skip empty methodologies
-
             data[i] = regime.summarise_parameters(param_list='concise')
             data[i]['max_el_resp'] = self.outputs['max_el_resp'][begin:begin+len(data[i])]
             data[i]['fire_eqv'] = self.outputs['fire_eqv'][begin:begin + len(data[i])]
             data[i] = data[i].round(3)
             begin = len(data[i])
-            #TODO add saving statement once confirm folder structure
 
         if debug_return:
             return data
+        else:
+            data[i].to_csv(os.path.join(self.save_loc, 'data', f'{self.ID}_FRS_{regime.SAVE_NAME}.csv'),
+                           index_label='ID')
 
     def _plot_reliability_curve(self, debug_show):
 
