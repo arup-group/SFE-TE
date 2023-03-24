@@ -116,6 +116,10 @@ class AssessmentCase:
         thermal_response = []
         thermal_hist = []
         for regime in self.heating_regimes:
+
+            # Skip analysis if there are not design fires associated with this methodology
+            if regime.is_empty: continue
+
             T_max, T_hist = self.ht_model.calc_thermal_response(
                 equiv_exp=equiv_exp,
                 exposure_fxn=regime.get_exposure,
@@ -197,6 +201,9 @@ class AssessmentCase:
         data = len(self.heating_regimes)*[0]
         begin = 0
         for i, regime in enumerate(self.heating_regimes):
+
+            if regime.is_empty: continue # skip empty methodologies
+
             data[i] = regime.summarise_parameters(param_list='concise')
             data[i]['max_el_resp'] = self.outputs['max_el_resp'][begin:begin+len(data[i])]
             data[i]['fire_eqv'] = self.outputs['fire_eqv'][begin:begin + len(data[i])]
@@ -211,7 +218,6 @@ class AssessmentCase:
 
         sns.set()
         fig, ax = plt.subplots()
-
         # calculate hist scale factor for legibility
         binned = list(np.histogram(self.outputs['fire_eqv'],
                                    bins=int(self.configs['eqv_max'] / self.configs['eqv_step']),
@@ -220,6 +226,9 @@ class AssessmentCase:
 
         begin = 0
         for i, regime in enumerate(self.heating_regimes):
+
+            if regime.is_empty: continue  # skip empty methodologies
+
             data = self.outputs['fire_eqv'][begin:begin + len(regime.params['A_c'])]
             binned = list(np.histogram(data, bins=int(self.configs['eqv_max'] / self.configs['eqv_step']),
                                        range=[0, self.configs['eqv_max']]))
@@ -227,6 +236,7 @@ class AssessmentCase:
             ax.bar(x=binned[1][:-1], height=binned[0], width=np.diff(binned[1]), align='edge', alpha=0.5,
                    label=regime.NAME)
             begin = len(regime.params['A_c'])
+
         ax.plot(self.outputs['reliability_curve'][:, 0], self.outputs['reliability_curve'][:, 2],
                 color='black',
                 label='Reliability ECDF')
@@ -258,15 +268,12 @@ class AssessmentCase:
         if debug_show:
             fig.show()
 
+    def _plot_max_el_temp_duration(self):
+        pass
+
+    def _plot_inputs(self):
+        pass
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
-        pass
-
-    def save_data(self):
-        """Saves data in case folder"""
-        pass
-
-    def process_plots(self):
-        """Processes and saves relevant plots"""
         pass

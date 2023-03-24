@@ -38,7 +38,7 @@ class Kirby(GenericRiskModel):
                              f'Sprinkler reliability should be in the interval [0, 100). ')
         if self.building_height <= 0:
             raise ValueError(f'Incorrect building height value of {self.building_height}.\n'
-                             f'Building height must be a posstive value. ')
+                             f'Building height must be a positive value. ')
 
     def assess_risk_target(self):
         """Assess total and structural reliability as per methodology outlined in Kirby et al"""

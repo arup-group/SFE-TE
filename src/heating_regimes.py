@@ -12,6 +12,7 @@ class GenericRegime:
         self.relevent_df_indices = None
         self.amended_df_indices = {}
         self.params = {}
+        self.is_empty = False
 
         self._get_relevant_design_fire_indices(design_fire_inputs)
         self._get_parameters(design_fire_inputs)
@@ -64,6 +65,9 @@ class UniEC1(GenericRegime):
         UNIT TEST REQUIRED"""
         # Get indeces
         self.relevent_df_indices = np.where(design_fire_inputs['A_c'] < self.crit_value)[0]
+        if self.relevent_df_indices.size == 0:
+            self.is_empty = True
+            print(f'No design fires associated with {UniEC1.NAME} methodology.')
 
     def _get_parameters(self, design_fire_inputs):
         """Samples only revenat data from design fires based on criteria. UNITE TEST REQUIRED"""
@@ -342,6 +346,9 @@ class TravelingISO16733(GenericRegime):
         UNIT TEST REQUIRED"""
         # Get indeces
         self.relevent_df_indices = np.where(design_fire_inputs['A_c'] > self.crit_value)[0]
+        if self.relevent_df_indices.size == 0:
+            self.is_empty = True
+            print(f'No design fires associated with {TravelingISO16733.NAME} methodology.')
 
     def _get_parameters(self, design_fire_inputs):
         """Samples only relevant data from design fires based on criteria. UNITE TEST REQUIRED"""
