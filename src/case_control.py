@@ -4,6 +4,7 @@ from scipy import optimize
 from scipy import interpolate
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 
 class AssessmentCase:
 
@@ -48,6 +49,12 @@ class AssessmentCase:
     def _setup_save_folder_structure(self, save_loc):
         """Setup folder structure based on analysis requirements.
         Updates case root folder"""
+
+        self.save_loc = os.path.join(save_loc, f'{self.ID}_{self.name}')
+        subfolders = ['data', 'inputs']
+        for subf in subfolders:
+            os.makedirs(os.path.join(self.save_loc, subf), exist_ok=True)
+
 
         pass
 
