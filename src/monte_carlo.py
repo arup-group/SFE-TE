@@ -61,8 +61,8 @@ class TriangularDistr(GenericDistr):
         return self.rnd.triangular(left=self.l, mode=self.m, right=self.r, size=sample_size)
 
     def draw(self):
-        l_lim = self.l - 0.1*(self.r-self.l)
-        r_lim = self.r + 0.1 * (self.r - self.l)
+        l_lim = self.l - 0.2*(self.r-self.l)
+        r_lim = self.r + 0.2 * (self.r - self.l)
         peak = 2/(self.r-self.l)
         return np.array([[l_lim, 0], [self.l, 0], [self.m, peak], [self.r, 0], [r_lim, 0]])
 
@@ -105,8 +105,8 @@ class UniBiomodalDistr(GenericDistr):
         return f(self.rnd.uniform(0, 1, size=sample_size))
 
     def draw(self):
-        l_lim = self.l - 0.1 * (self.r - self.l)
-        r_lim = self.r + 0.1 * (self.r - self.l)
+        l_lim = self.l - 0.2 * (self.r - self.l)
+        r_lim = self.r + 0.2 * (self.r - self.l)
         return np.array(
             [[l_lim, 0], [self.l, 0], [self.l, self.h1], [self.m, self.h1], [self.m, self.h2],  [self.r, self.h2], [self.r, 0],  [r_lim, 0]])
 
@@ -138,8 +138,8 @@ class UniformDistr(GenericDistr):
         return self.rnd.uniform(self.l, self.r, size=sample_size)
 
     def draw(self):
-        l_lim = self.l - 0.1 * (self.r - self.l)
-        r_lim = self.r + 0.1 * (self.r - self.l)
+        l_lim = self.l - 0.2 * (self.r - self.l)
+        r_lim = self.r + 0.2 * (self.r - self.l)
         return np.array(
             [[l_lim, 0], [self.l, 0], [self.l, self.h], [self.r, self.h],[self.r, 0],  [r_lim, 0]])
 
@@ -333,7 +333,7 @@ class FixedPointDistr(GenericDistr):
         return np.full(shape=sample_size, fill_value=self.value, dtype=np.float64)
 
     def draw(self):
-        return np.array([[self.value, 50], [self.value+0.02, 50]])
+        return np.array([[self.value-0.02, 25], [self.value+0.02, 25]])
 
     def report_params(self):
         return {'label': FixedPointDistr.label}

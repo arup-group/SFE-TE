@@ -6,8 +6,24 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
+UNIT_CATALOGUE = {
+    'A_c': {'ui_label': 'ca', 'title': 'Compartment area', 'unit': 'm$^2$'},
+    'c_ratio': {'ui_label': 'csr', 'title': 'Compartment sides ratio', 'unit': '-'},
+    'h_c': {'ui_label': 'ch', 'title': 'Compartment height', 'unit': 'm'},
+    'w_frac': {'ui_label': 'vpr', 'title': 'Ventilated perimeter fraction', 'unit': '-'},
+    'h_w_eq': {'ui_label': 'heq', 'title': 'Average window height', 'unit': 'm'},
+    'remain_frac': {'ui_label': 'trf', 'title': 'Thermal resilience', 'unit': '-'},
+    'fabr_inrt': {'ui_label': 'ftr', 'title': 'Fabric thermal inertia', 'unit': 'J/m$^2$s$^{1/2}$K'},
+    'q_f_d': {'ui_label': 'fl', 'title': 'Fuel load', 'unit': 'MJ/m$^2$'},
+    'Q': {'ui_label': 'fl', 'title': 'Heat release rate per unit area', 'unit': 'KW/m$^2$'},
+    't_lim': {'ui_label': 'fl', 'title': 'Fire growth rate', 'unit': 'min'},
+    'spr_rate': {'ui_label': 'fl', 'title': 'Fire spread rate', 'unit': 'mm/s'},
+    'flap_angle': {'ui_label': 'fl', 'title': 'Flapping angle', 'unit': 'deg'},
+    'T_nf_max': {'ui_label': 'fl', 'title': 'Near field max temperature', 'unit': '°C'}}
+
 class AssessmentCase:
 
+    UNITS = UNIT_CATALOGUE
     HEATING_REGIMES = {
         'Uniform BS EN 1991-1-2': hr.UniEC1,
         'Traveling ISO 16733-2': hr.TravelingISO16733}
@@ -39,6 +55,7 @@ class AssessmentCase:
                         'thermal_response': [],
                         'eqv_req': None,
                         'eqv_req_conf': None,
+                        'eqv_conc_cover': None
                         'success_conv': None,
                         'max_el_resp': None,
                         'fire_eqv': []}
@@ -169,30 +186,6 @@ class AssessmentCase:
         for t_eqv in self._eqv_assess_range:
             self._assess_single_equiv(t_eqv, for_optimisation=False)
 
-    def _quick_analysis(self):
-        """ Analysis sequence for quick analysis"""
-        self._setup_analysis_parameters()
-        self.max_optm_fxn = [10000]
-        self.optm_result = self._optimise_to_limiting_factor()
-        self._assess_convergence_success()
-        self._interpolate_equiv()
-        self._sample_sensitivity_quick()
-
-    def _full_analysis(self):
-        """ Analysis sequence for full analysis"""
-        self._setup_analysis_parameters()
-        self._assess_full_eqv_range()
-        self._interpolate_equiv()
-        self._sample_sensitivity_full()
-        self._estimate_max_elem_response()
-        self._estimate_fire_eqv()
-        self._plot_reliability_curve(debug_show=True)
-        self.risk_model._sprinkler_sensitivity(
-            reliability_curve=self.outputs['reliability_curve'],
-            conf_curve=self.outputs['reliability_conf'],
-            debug_show=True)
-        self._save_design_fires_data()
-
     def run_analysis(self):
         """Starts analysis"""
         if self.analysis_type is 'quick':
@@ -219,7 +212,16 @@ class AssessmentCase:
             data[i].to_csv(os.path.join(self.save_loc, 'data', f'{self.ID}_FRS_{regime.SAVE_NAME}.csv'),
                            index_label='ID')
 
-    def _plot_reliability_curve(self, debug_show):
+    def _save_thermal_response(self):
+        pass
+
+    def _save_reliability_curve(self):
+        pass
+
+    def _save_study_report(self):
+        pass
+
+    def _plot_reliability_curve(self, debug_show=False):
 
         sns.set()
         fig, ax = plt.subplots()
@@ -269,15 +271,69 @@ class AssessmentCase:
         ax.set_ylabel('Structural reliability')
         ax.legend(prop={'size': 9})
 
-        #TODO Save figure
+        fig.tight_layout()
+        plt.savefig(os.path.join(self.save_loc, f'{self.ID}_reliability_curve.png'),
+                    bbox_inches="tight",
+                    dpi=200)
         if debug_show:
             fig.show()
+
+    def _plot_convergence_sensitivity(self):
+        pass
 
     def _plot_max_el_temp_duration(self):
         pass
 
-    def _plot_inputs(self):
-        pass
+    def _plot_inputs(self, list_of_inputs, filename):
+
+        sns.set()
+        fig, axs = plt.subplots(2, 4, figsize=(20, 10))
+        axs = axs.ravel()
+
+        for i, input in enumerate(list_of_inputs):
+            axs[i].hist(self.inputs['values'][input], bins=25, density=True, align='mid', label='sampled data',
+                               alpha=0.7)
+            axs[i].plot(self.inputs['curves'][input][:, 0], self.inputs['curves'][input][:, 1],
+                               linestyle='dashed', color='#FF7F0E', label='analytical target')
+            axs[i].set_ylim([-axs[i].get_ylim()[1] / 100, axs[i].get_ylim()[1]])
+            axs[i].set_xlabel(f'{AssessmentCase.UNITS[input]["title"]} ({AssessmentCase.UNITS[input]["unit"]})')
+        [axs[k].axis('off') for k in range(i + 1, len(axs))]
+        handles, labels = axs[0].get_legend_handles_labels()
+        plt.figlegend(handles, labels, loc='lower center', ncol=2)
+        plt.savefig(os.path.join(self.save_loc, 'inputs', f'{self.ID}_{filename}.png'),
+                    dpi=150,
+                    bbox_inches='tight')
+        plt.close(fig)
+
+    def _quick_analysis(self):
+        """ Analysis sequence for quick analysis"""
+        self._setup_analysis_parameters()
+        self.max_optm_fxn = [10000]
+        self.optm_result = self._optimise_to_limiting_factor()
+        self._assess_convergence_success()
+        self._interpolate_equiv()
+        self._sample_sensitivity_quick()
+
+    def _full_analysis(self):
+        """ Analysis sequence for full analysis"""
+        self._setup_analysis_parameters()
+        self._assess_full_eqv_range()
+        self._interpolate_equiv()
+        self._sample_sensitivity_full()
+        self._estimate_max_elem_response()
+        self._estimate_fire_eqv()
+        self._plot_reliability_curve(debug_show=True)
+        self.risk_model._sprinkler_sensitivity(
+            reliability_curve=self.outputs['reliability_curve'],
+            conf_curve=self.outputs['reliability_conf'],
+            debug_show=True)
+        self._save_design_fires_data()
+        self._plot_inputs(
+            list_of_inputs = ['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
+            filename='geometry_params')
+        self._plot_inputs(
+            list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max'],
+            filename='fire_params')
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
