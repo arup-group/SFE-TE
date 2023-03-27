@@ -5,6 +5,7 @@ from scipy import interpolate
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+from textwrap import dedent
 
 UNIT_CATALOGUE = {
     'A_c': {'ui_label': 'ca', 'title': 'Compartment area', 'unit': 'm$^2$'},
@@ -55,7 +56,7 @@ class AssessmentCase:
                         'thermal_response': [],
                         'eqv_req': None,
                         'eqv_req_conf': None,
-                        'eqv_conc_cover': None
+                        'eqv_conc_cover': -1,
                         'success_conv': None,
                         'max_el_resp': None,
                         'fire_eqv': []}
@@ -218,8 +219,22 @@ class AssessmentCase:
     def _save_reliability_curve(self):
         pass
 
-    def _save_study_report(self):
-        pass
+    def _save_case_results_summary(self):
+
+        if self.analysis_type == 'full':
+            txt = f"""\
+                    Analysis for case {self.ID} {self.name} completed successfully.\n
+                    Total reliability: {100*self.risk_model.total_reliability:.2f} %.
+                    Sprinkler reliability:  {self.risk_model.sprinkler_reliability:.2f} %.
+                    Structural reliability: {100*self.risk_model.struct_reliability:.2f} %.\n
+                    Equivalent fire severity to {self.ht_model.ecr.label}: {self.outputs['eqv_req']:.0f} min.
+                    Confidence interval for sample size of {self.sample_size}: {self.outputs['eqv_req_conf'][1]:.0f} to {self.outputs['eqv_req_conf'][0]:.0f} min.
+                    Required minimum depth  of concrete cover: {self.outputs['eqv_conc_cover']:.0f} mm."""
+        else:
+            txt = ""
+
+        with open(os.path.join(self.save_loc, f'{self.ID}_summary.txt'), 'w') as f:
+            f.write(dedent(txt))
 
     def _plot_reliability_curve(self, debug_show=False):
 
@@ -334,6 +349,7 @@ class AssessmentCase:
         self._plot_inputs(
             list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max'],
             filename='fire_params')
+        self._save_case_results_summary()
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
