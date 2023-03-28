@@ -1,3 +1,5 @@
+import pandas as pd
+
 import heating_regimes as hr
 import numpy as np
 from scipy import optimize
@@ -217,7 +219,11 @@ class AssessmentCase:
         pass
 
     def _save_reliability_curve(self):
-        pass
+        """Saves reliability curve data as a csv"""
+
+        data = pd.DataFrame(self.outputs['reliability_curve'], columns=['fire_severity', 'el_temp_target', 'ecdf'])
+        data[['ecdf_low', 'ecdf_high']] = self.outputs['reliability_conf']
+        data.round(3).to_csv(os.path.join(self.save_loc, 'data', f'{self.ID}_reliability_curve.csv'), index=False)
 
     def _save_case_results_summary(self):
 
@@ -350,6 +356,7 @@ class AssessmentCase:
             list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max'],
             filename='fire_params')
         self._save_case_results_summary()
+        self._save_reliability_curve()
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
