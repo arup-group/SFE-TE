@@ -202,21 +202,24 @@ class AssessmentCase:
         data = len(self.heating_regimes)*[0]
         begin = 0
         for i, regime in enumerate(self.heating_regimes):
-            if regime.is_empty: continue # skip empty methodologies
+            if regime.is_empty:
+                continue # skip empty methodologies
             data[i] = regime.summarise_parameters(param_list='concise')
             data[i]['max_el_resp'] = self.outputs['max_el_resp'][begin:begin+len(data[i])]
             data[i]['fire_eqv'] = self.outputs['fire_eqv'][begin:begin + len(data[i])]
             data[i] = data[i].round(3)
             begin = len(data[i])
 
-        if debug_return:
-            return data
-        else:
-            data[i].to_csv(os.path.join(self.save_loc, 'data', f'{self.ID}_FRS_{regime.SAVE_NAME}.csv'),
-                           index_label='ID')
+            if debug_return:
+                return data
+            else:
+                data[i].to_csv(os.path.join(self.save_loc, 'data', f'{self.ID}_FRS_{regime.SAVE_NAME}.csv'),
+                               index_label='ID')
 
     def _save_thermal_response(self):
-        pass
+        """Saves thermal response vector as binary .npy"""
+        np.save(file=os.path.join(self.save_loc, 'data', f'{self.ID}_thermal_response.npy'),
+                arr=self.outputs['thermal_response'].astype('float16', copy=False))
 
     def _save_reliability_curve(self):
         """Saves reliability curve data as a csv"""
@@ -243,9 +246,9 @@ class AssessmentCase:
             f.write(dedent(txt))
 
     def _plot_reliability_curve(self, debug_show=False):
-
+        #TODO get appropriate figure size
         sns.set()
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(12, 7))
         # calculate hist scale factor for legibility
         binned = list(np.histogram(self.outputs['fire_eqv'],
                                    bins=int(self.configs['eqv_max'] / self.configs['eqv_step']),
@@ -295,7 +298,7 @@ class AssessmentCase:
         fig.tight_layout()
         plt.savefig(os.path.join(self.save_loc, f'{self.ID}_reliability_curve.png'),
                     bbox_inches="tight",
-                    dpi=200)
+                    dpi=150)
         if debug_show:
             fig.show()
 
@@ -303,7 +306,42 @@ class AssessmentCase:
         pass
 
     def _plot_max_el_temp_duration(self):
-        pass
+
+        mrk_lst = ['o', '^', 's', '+']
+        N_max = 500  # maximum points for legibility
+        vmin = 0
+        vmax = np.percentile(self.outputs['fire_eqv'], 97.5)  # autoscale the colormap to the first 95%
+
+        sns.set()
+        fig, ax = plt.subplots(figsize=(12, 7))
+
+        begin = 0
+        for i, regime in enumerate(self.heating_regimes):
+
+            if regime.is_empty: continue  # skip empty methodologies
+
+            red_sample = int(len(regime.params['burnout']) / self.sample_size * N_max)
+            sampl_ind = np.random.choice(range(len(regime.params['burnout'])), red_sample, replace=False)
+            x = regime.params['burnout']
+            y = self.outputs['max_el_resp'][begin:begin + len(x)]
+            col = self.outputs['fire_eqv'][begin:begin + len(x)]
+            _ = ax.scatter(x[sampl_ind], y[sampl_ind], c=col[sampl_ind], marker=mrk_lst[i], cmap='coolwarm',
+                           vmin=vmin, vmax=vmax, label=regime.NAME, alpha=0.7)
+            begin = len(x)
+
+        ax.hlines(y=self.lim_factor, xmin=0, xmax=ax.get_xlim()[1], color='red', linestyle='dashed', label='Limiting temperature')
+        ax.legend()
+        ax.set_ylim([0, ax.get_ylim()[1] + 200])
+        ax.set_xlim([0, ax.get_xlim()[1]])
+        ax.set_xlabel('Fire duration (min)')
+        ax.set_ylabel('Element maximum temperature (°C)')
+        ax.set_yticks(np.arange(ax.get_ylim()[0], ax.get_ylim()[1], 100))
+        ax.set_xticks(np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 100))
+        cb = fig.colorbar(_, extend='max')
+        cb.set_label('Fire severity (min)')
+        plt.savefig(os.path.join(self.save_loc, f'{self.ID}_duration_response.png'),
+                    dpi=150,
+                    bbox_inches='tight')
 
     def _plot_inputs(self, list_of_inputs, filename):
 
@@ -348,15 +386,17 @@ class AssessmentCase:
             reliability_curve=self.outputs['reliability_curve'],
             conf_curve=self.outputs['reliability_conf'],
             debug_show=True)
-        self._save_design_fires_data()
         self._plot_inputs(
-            list_of_inputs = ['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
+            list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
             filename='geometry_params')
         self._plot_inputs(
             list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max'],
             filename='fire_params')
+        self._plot_max_el_temp_duration()
         self._save_case_results_summary()
         self._save_reliability_curve()
+        self._save_design_fires_data()
+        self._save_thermal_response() # make sure this is always called last
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
