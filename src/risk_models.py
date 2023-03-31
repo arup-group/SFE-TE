@@ -1,7 +1,9 @@
+import pandas as pd
 from scipy import interpolate
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import os
 
 class GenericRiskModel:
 
@@ -47,7 +49,7 @@ class Kirby(GenericRiskModel):
         self.struct_reliability = (self.total_reliability - self.sprinkler_reliability/100)/(1 - self.sprinkler_reliability/100)
 
 
-    def _sprinkler_sensitivity(self, reliability_curve, conf_curve, debug_show):
+    def _sprinkler_sensitivity(self, analysis_case):
         """Performs sprinkler sensitivity study"""
 
         spr_rel_range = np.arange(0, 100, 1)/100
@@ -55,6 +57,8 @@ class Kirby(GenericRiskModel):
         spr_rel_range = spr_rel_range[struct_rel > 0]
         struct_rel = struct_rel[struct_rel > 0]
 
+        reliability_curve = analysis_case.outputs['reliability_curve']
+        conf_curve = analysis_case.outputs['reliability_conf']
 
         #compute reliability
         f = interpolate.interp1d(reliability_curve[:, 2], reliability_curve[:, 0], fill_value=-1, bounds_error=False)
@@ -67,8 +71,7 @@ class Kirby(GenericRiskModel):
             conf[i] = f(struct_rel)
 
         sns.set()
-        fig, ax = plt.subplots()
-
+        fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(spr_rel_range[reliability != -1]*100, reliability[reliability != -1],
                 color='black',
                 label='Target severity requirement')
@@ -84,11 +87,19 @@ class Kirby(GenericRiskModel):
 
         ax.set_xlabel('Sprinkler reliability (%)')
         ax.set_ylabel('Exposure rating (min)')
-        ax.legend(prop={'size': 9})
+        ax.legend()
 
-        # TODO Save figure
-        if debug_show:
-            fig.show()
+        # Save figure
+        plt.savefig(os.path.join(analysis_case.save_loc, f'{analysis_case.ID}_sprinkler_sensitivity.png'),
+                    bbox_inches="tight",
+                    dpi=150)
+        # Save data
+        data = pd.DataFrame({'spr_reliability': spr_rel_range,
+                             'fire_severity_req': reliability,
+                             'low_bound': conf[1],
+                             'upper_bound': conf[0]})
+        data.round(3).to_csv(os.path.join(analysis_case.save_loc, 'data', f'{analysis_case.ID}_sprinkler_sensitivity.csv'), index=False)
+        plt.close(fig)
 
 
     def risk_sensitivity_study(self, **kwargs):

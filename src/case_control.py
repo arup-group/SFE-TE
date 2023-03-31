@@ -53,15 +53,15 @@ class AssessmentCase:
         self.max_optm_fxn = None
         self.rel_interp_f = None
         self._eqv_assess_range = None
-        self.outputs = {'reliability_curve': [],
-                        'reliability_conf': None,
-                        'thermal_response': [],
-                        'eqv_req': None,
-                        'eqv_req_conf': None,
-                        'eqv_conc_cover': -1,
-                        'success_conv': None,
-                        'max_el_resp': None,
-                        'fire_eqv': []}
+        self.outputs = {'reliability_curve': [],  # fraction of fires less than treshold factor
+                        'reliability_conf': [],  # confidence interval on reliability curve
+                        'thermal_response': [],  # vector of maximum element temperatures
+                        'eqv_req': None,  # vector of maximum steel temperatures
+                        'eqv_req_conf': [],  # 95% confidence interval on eqv_req
+                        'eqv_conc_cover': -1,   # Eqv. concrete cover
+                        'success_conv': None,  # Success flag whe
+                        'max_el_resp': [], # Vector of maximum element temperatures at target resistance
+                        'fire_eqv': []}  # Vector of eqv. fire severtity for each fire
 
         self._setup_save_folder_structure(save_loc)
 
@@ -91,7 +91,7 @@ class AssessmentCase:
         """Checks whether convergence is within tolerance limits"""
         self.outputs['success_conv'] = self.optm_result.fun < self.ht_model.optm_config['tol']
 
-    def _interpolate_equiv(self):
+    def _estimate_eqv_req(self):
         """Interpolates convergence results to improve accuracy"""
 
         self.outputs['reliability_curve'] = np.array(self.outputs['reliability_curve'])
@@ -102,15 +102,13 @@ class AssessmentCase:
     def _sample_sensitivity_quick(self):
         boot_res = []
         for k in range(self.configs['bootstrap_reps']):
-            boot = np.random.choice(self.outputs['thermal_response'][0], len(self.outputs['thermal_response'][0]), replace=True)
+            boot = np.random.choice(np.hstack(self.outputs['thermal_response']), len(self.outputs['thermal_response']), replace=True)
             boot_res.append(np.percentile(boot, 100*self.risk_model.struct_reliability))
         boot_res = self.rel_interp_f(boot_res)
-
         self.outputs['eqv_req_conf'] = np.percentile(boot_res, [2.5, 97.5])
 
     def _sample_sensitivity_full(self):
         boot_res = np.zeros((self.configs['bootstrap_reps'], len(self._eqv_assess_range)))
-        self.outputs['thermal_response'] = np.array(self.outputs['thermal_response'])
         for k in range(self.configs['bootstrap_reps']):
             rnd_ind = np.random.choice(range(self.outputs['thermal_response'].shape[1]), self.outputs['thermal_response'].shape[1], replace=True)
             new_resp = self.outputs['thermal_response'][:, rnd_ind]
@@ -123,11 +121,14 @@ class AssessmentCase:
             f = interpolate.interp1d(self.outputs['reliability_conf'][:,i], self._eqv_assess_range)
             self.outputs['eqv_req_conf'][i] = f(self.risk_model.struct_reliability)
 
-    def _estimate_max_elem_response(self):
-        f = interpolate.interp1d(self._eqv_assess_range, self.outputs['thermal_response'], axis=0)
-        self.outputs['max_el_resp'] = f(self.outputs['eqv_req'])
+    def _estimate_max_elem_response_at_eqv_req(self):
+        if self.analysis_type == 'full':
+            f = interpolate.interp1d(self._eqv_assess_range, self.outputs['thermal_response'], axis=0)
+            self.outputs['max_el_resp'] = f(self.outputs['eqv_req'])
+        elif self.analysis_type == 'quick':
+            self.outputs['max_el_resp'] = self.outputs['thermal_response']
 
-    def _estimate_fire_eqv(self):
+    def _estimate_eqv_rating_of_all_fires(self):
         for i in range(self.outputs['thermal_response'].shape[1]):
             f = interpolate.interp1d(
                 self.outputs['thermal_response'][:, i], self._eqv_assess_range, fill_value=(self.configs['eqv_max']+30, 2), bounds_error=False)
@@ -165,16 +166,18 @@ class AssessmentCase:
             if optm_fxn < self.max_optm_fxn[0]:
                 self.max_optm_fxn[0] = optm_fxn
                 try:
-                    self.outputs['thermal_response'][0] = thermal_response
-                except IndexError:
-                    self.outputs['thermal_response'].append(thermal_response)
+                    self.outputs['thermal_response'][:, 0] = thermal_response
+                except TypeError:
+                    self.outputs['thermal_response'] = np.vstack(thermal_response)
             return optm_fxn
+
         else:
             self.outputs['thermal_response'].append(thermal_response)
             self.outputs['t_hist'] = thermal_hist
             print(f'Equiv: {equiv_exp}, Reliability: {reliability}')
 
     def _optimise_to_limiting_factor(self):
+        self.max_optm_fxn = [10000]  # holder for a value of optimisation function
         return optimize.minimize_scalar(
             lambda x: self._assess_single_equiv(x, for_optimisation=True),
             bounds=(1, self.ht_model.eqv_max),
@@ -188,13 +191,7 @@ class AssessmentCase:
         self._eqv_assess_range = np.append(self._eqv_assess_range, self.configs['eqv_max'])
         for t_eqv in self._eqv_assess_range:
             self._assess_single_equiv(t_eqv, for_optimisation=False)
-
-    def run_analysis(self):
-        """Starts analysis"""
-        if self.analysis_type is 'quick':
-            self._quick_analysis()
-        elif self.analysis_type is 'full':
-            self._full_analysis()
+        self.outputs['thermal_response'] = np.array(self.outputs['thermal_response'])
 
     def _save_design_fires_data(self, debug_return=False):
         """Processes and saves design fire database"""
@@ -205,8 +202,12 @@ class AssessmentCase:
             if regime.is_empty:
                 continue # skip empty methodologies
             data[i] = regime.summarise_parameters(param_list='concise')
+            print(begin, len(data[i]))
             data[i]['max_el_resp'] = self.outputs['max_el_resp'][begin:begin+len(data[i])]
-            data[i]['fire_eqv'] = self.outputs['fire_eqv'][begin:begin + len(data[i])]
+            try:
+                data[i]['fire_eqv'] = self.outputs['fire_eqv'][begin:begin + len(data[i])]
+            except ValueError: # fire eqv is not available for quick analysis
+                pass
             data[i] = data[i].round(3)
             begin = len(data[i])
 
@@ -225,30 +226,42 @@ class AssessmentCase:
         """Saves reliability curve data as a csv"""
 
         data = pd.DataFrame(self.outputs['reliability_curve'], columns=['fire_severity', 'el_temp_target', 'ecdf'])
-        data[['ecdf_low', 'ecdf_high']] = self.outputs['reliability_conf']
+        try:
+            data[['ecdf_low', 'ecdf_high']] = self.outputs['reliability_conf']
+        except ValueError: # pass if sensitivity on the values is not available
+            pass
         data.round(3).to_csv(os.path.join(self.save_loc, 'data', f'{self.ID}_reliability_curve.csv'), index=False)
 
     def _save_case_results_summary(self):
 
         if self.analysis_type == 'full':
             txt = f"""\
-                    Analysis for case {self.ID} {self.name} completed successfully.\n
-                    Total reliability: {100*self.risk_model.total_reliability:.2f} %.
-                    Sprinkler reliability:  {self.risk_model.sprinkler_reliability:.2f} %.
-                    Structural reliability: {100*self.risk_model.struct_reliability:.2f} %.\n
+                    Full analysis for case {self.ID}-{self.name} completed successfully.\n
                     Equivalent fire severity to {self.ht_model.ecr.label}: {self.outputs['eqv_req']:.0f} min.
                     Confidence interval for sample size of {self.sample_size}: {self.outputs['eqv_req_conf'][1]:.0f} to {self.outputs['eqv_req_conf'][0]:.0f} min.
-                    Required minimum depth  of concrete cover: {self.outputs['eqv_conc_cover']:.0f} mm."""
-        else:
-            txt = ""
+                    Required minimum depth  of concrete cover: {self.outputs['eqv_conc_cover']:.0f} mm.\n
+                    Total reliability: {100*self.risk_model.total_reliability:.2f} %.
+                    Sprinkler reliability:  {self.risk_model.sprinkler_reliability:.2f} %.
+                    Structural reliability: {100*self.risk_model.struct_reliability:.2f} %."""
+        elif self.analysis_type == 'quick':
+            txt = f"""\
+                    Quick analysis for case {self.ID}-{self.name} converged {'successfully' if self.outputs['success_conv'] else 'unsuccessfully'}.\n
+                    Undertaken iterations: {self.optm_result.nfev}
+                    Convergence error: {self.optm_result.fun:.2f}.\n
+                    Equivalent fire severity to {self.ht_model.ecr.label}: {self.outputs['eqv_req']:.0f} min.
+                    Confidence interval for sample size of {self.sample_size}: {self.outputs['eqv_req_conf'][1]:.0f} to {self.outputs['eqv_req_conf'][0]:.0f} min.
+                    Required minimum depth  of concrete cover: {self.outputs['eqv_conc_cover']:.0f} mm.\n
+                    Total reliability: {100*self.risk_model.total_reliability:.2f} %.
+                    Sprinkler reliability:  {self.risk_model.sprinkler_reliability:.2f} %.
+                    Structural reliability: {100*self.risk_model.struct_reliability:.2f} %."""
 
         with open(os.path.join(self.save_loc, f'{self.ID}_summary.txt'), 'w') as f:
             f.write(dedent(txt))
 
-    def _plot_reliability_curve(self, debug_show=False):
+    def _plot_reliability_curve(self):
         #TODO get appropriate figure size
         sns.set()
-        fig, ax = plt.subplots(figsize=(12, 7))
+        fig, ax = plt.subplots(figsize=(10, 6))
         # calculate hist scale factor for legibility
         binned = list(np.histogram(self.outputs['fire_eqv'],
                                    bins=int(self.configs['eqv_max'] / self.configs['eqv_step']),
@@ -293,17 +306,58 @@ class AssessmentCase:
         ax.set_yticks(np.arange(0, 1.1, 0.1))
         ax.set_xlabel('Equivalent fire severity rating (min)')
         ax.set_ylabel('Structural reliability')
-        ax.legend(prop={'size': 9})
+        ax.legend()
 
         fig.tight_layout()
         plt.savefig(os.path.join(self.save_loc, f'{self.ID}_reliability_curve.png'),
                     bbox_inches="tight",
                     dpi=150)
-        if debug_show:
-            fig.show()
+        plt.close(fig)
 
-    def _plot_convergence_sensitivity(self):
-        pass
+    def _plot_convergence_study(self):
+        """Plots a graph of the convergence study depicting a crude reliability curve"""
+
+        sns.set()
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.plot(self.outputs['reliability_curve'][:, 0], self.outputs['reliability_curve'][:, 2], 'o',
+                label='Iterations',
+                color='orange')
+        ax.plot(self.outputs['reliability_curve'][:, 0], self.outputs['reliability_curve'][:, 2],
+                color='blue',
+                linestyle='dashed',
+                linewidth=1,
+                label='Reliability ECDF interpolation',
+                alpha=0.7)
+        ax.hlines(self.risk_model.struct_reliability,
+                  xmin=0,
+                  xmax=300,
+                  color='red',
+                  linestyle='dashed',
+                  label='Reliability target')
+        ax.plot([self.outputs['eqv_req'], self.outputs['eqv_req']], [0, self.risk_model.struct_reliability],
+                color='green',
+                label='Eqv. severity requirement')
+        ax.fill_betweenx(
+            y=[0, self.risk_model.struct_reliability],
+            x1=[self.outputs['eqv_req_conf'][0], self.outputs['eqv_req_conf'][0]],
+            x2=[self.outputs['eqv_req_conf'][1], self.outputs['eqv_req_conf'][1]],
+            alpha=0.2,
+            color='green',
+            label='95% conf. interval')
+
+        ax.set_ylim([0, 1.1])
+        ax.set_xlim([0, self.configs['eqv_max']])
+        ax.set_xticks(np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 10))
+        ax.set_yticks(np.arange(0, 1.1, 0.1))
+        ax.set_xlabel('Equivalent fire severity rating (min)')
+        ax.set_ylabel('Structural reliability')
+        ax.legend()
+        plt.savefig(os.path.join(self.save_loc, f'{self.ID}_convergence_plot.png'),
+                    dpi=150,
+                    bbox_inches='tight')
+        plt.close(fig)
+
 
     def _plot_max_el_temp_duration(self):
 
@@ -313,7 +367,7 @@ class AssessmentCase:
         vmax = np.percentile(self.outputs['fire_eqv'], 97.5)  # autoscale the colormap to the first 95%
 
         sns.set()
-        fig, ax = plt.subplots(figsize=(12, 7))
+        fig, ax = plt.subplots(figsize=(10, 6))
 
         begin = 0
         for i, regime in enumerate(self.heating_regimes):
@@ -342,6 +396,7 @@ class AssessmentCase:
         plt.savefig(os.path.join(self.save_loc, f'{self.ID}_duration_response.png'),
                     dpi=150,
                     bbox_inches='tight')
+        plt.close(fig)
 
     def _plot_inputs(self, list_of_inputs, filename):
 
@@ -367,36 +422,55 @@ class AssessmentCase:
     def _quick_analysis(self):
         """ Analysis sequence for quick analysis"""
         self._setup_analysis_parameters()
-        self.max_optm_fxn = [10000]
         self.optm_result = self._optimise_to_limiting_factor()
         self._assess_convergence_success()
-        self._interpolate_equiv()
+        self._estimate_eqv_req()
         self._sample_sensitivity_quick()
+        self._estimate_max_elem_response_at_eqv_req()
 
-    def _full_analysis(self):
-        """ Analysis sequence for full analysis"""
-        self._setup_analysis_parameters()
-        self._assess_full_eqv_range()
-        self._interpolate_equiv()
-        self._sample_sensitivity_full()
-        self._estimate_max_elem_response()
-        self._estimate_fire_eqv()
-        self._plot_reliability_curve(debug_show=True)
-        self.risk_model._sprinkler_sensitivity(
-            reliability_curve=self.outputs['reliability_curve'],
-            conf_curve=self.outputs['reliability_conf'],
-            debug_show=True)
         self._plot_inputs(
             list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
             filename='geometry_params')
         self._plot_inputs(
             list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max'],
             filename='fire_params')
+        self._plot_convergence_study()
+
+        self._save_design_fires_data()
+        self._save_reliability_curve()
+        self._save_case_results_summary()
+        self._save_thermal_response()
+
+    def _full_analysis(self):
+        """ Analysis sequence for full analysis"""
+        self._setup_analysis_parameters()
+        self._assess_full_eqv_range()
+        self._estimate_eqv_req()
+        self._sample_sensitivity_full()
+        self._estimate_max_elem_response_at_eqv_req()
+        self._estimate_eqv_rating_of_all_fires()
+        self.risk_model._sprinkler_sensitivity(analysis_case=self)
+
+        self._plot_inputs(
+            list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
+            filename='geometry_params')
+        self._plot_inputs(
+            list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max'],
+            filename='fire_params')
+        self._plot_reliability_curve()
         self._plot_max_el_temp_duration()
+
         self._save_case_results_summary()
         self._save_reliability_curve()
         self._save_design_fires_data()
-        self._save_thermal_response() # make sure this is always called last
+        self._save_thermal_response()  # make sure this is always called last
+
+    def run_analysis(self):
+        """Starts analysis"""
+        if self.analysis_type is 'quick':
+            self._quick_analysis()
+        elif self.analysis_type is 'full':
+            self._full_analysis()
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
