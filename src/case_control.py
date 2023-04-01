@@ -24,6 +24,13 @@ UNIT_CATALOGUE = {
     'flap_angle': {'ui_label': 'fl', 'title': 'Flapping angle', 'unit': 'deg'},
     'T_nf_max': {'ui_label': 'fl', 'title': 'Near field max temperature', 'unit': '°C'}}
 
+HEATING_REGIMES = {
+        'Uniform BS EN 1991-1-2': hr.UniEC1,
+        'Traveling ISO 16733-2': hr.TravelingISO16733}
+EQV_METHODS = {}
+EQV_CURVES = {}
+RISK_METHODS = {}
+
 class AssessmentCase:
 
     UNITS = UNIT_CATALOGUE
@@ -449,7 +456,7 @@ class AssessmentCase:
         self._sample_sensitivity_full()
         self._estimate_max_elem_response_at_eqv_req()
         self._estimate_eqv_rating_of_all_fires()
-        self.risk_model._sprinkler_sensitivity(analysis_case=self)
+        self.risk_model.risk_sensitivity_study(analysis_case=self)
 
         self._plot_inputs(
             list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
@@ -474,4 +481,36 @@ class AssessmentCase:
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
+        pass
+
+class CaseControler:
+
+    def __init__(self):
+        pass
+
+    def _get_inputs(self):
+        pass
+
+    def _get_configs(self):
+        pass
+
+    def initiate_methods(self):
+        # Initiate folder structure
+        # Setup risk method
+        # Setup ht method
+        # Setup mc method
+        # setup cases
+
+        pass
+
+    def produce_cases(self):
+        pass
+
+    def run_a_study(self):
+        pass
+
+    def process_a_study_results(self):
+        pass
+
+    def run_b_study(self):
         pass

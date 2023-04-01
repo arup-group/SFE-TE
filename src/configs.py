@@ -19,7 +19,7 @@ UNIT_CATALOGUE = {
     'T_nf_max': {'ui_label': 'fl', 'title': 'Near field max temperature', 'unit': '°C'}}
 
 HEATING_REGIMES = {
-        'Uniform BS EN 1991-1-2': [hr.UniEC1, {}]
+        'Uniform BS EN 1991-1-2': [hr.UniEC1, {}],
         'Traveling ISO 16733-2': [hr.TravelingISO16733, {}]}
 
 EQV_METHODS = {
