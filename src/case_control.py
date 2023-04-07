@@ -1,6 +1,7 @@
-import pandas as pd
-
+import configs as cfg
 import heating_regimes as hr
+import pandas as pd
+import json
 import numpy as np
 from scipy import optimize
 from scipy import interpolate
@@ -485,14 +486,29 @@ class AssessmentCase:
 
 class CaseControler:
 
-    def __init__(self):
-        pass
+    def __init__(self, inputs, out_f):
+        self.out_f = out_f
+        self.inputs = inputs
+        self._setup_folder_structure()
+        self._update_with_sys_configs()
+        self._save_inputs()
 
-    def _get_inputs(self):
-        pass
+    def _update_with_sys_configs(self):
+        """Updates the input file with non-user controlled configurations"""
 
-    def _get_configs(self):
-        pass
+        for method in ['eqv_method', 'eqv_curve', 'heating_regimes', 'risk_method']:
+
+            #if input is not dict of dict then transform it as dictionary
+            if not isinstance(self.inputs[method], dict):
+                self.inputs[method] = {self.inputs[method]: {}}
+
+            for i in self.inputs[method]:
+                self.inputs[method][i].update(cfg.METHODOLOGIES[method][i][1])
+
+
+    def _save_inputs(self):
+        with open(os.path.join(self.out_f, 'info', 'inputs.json'), 'w') as f:
+            json.dump(self.inputs, f, indent=4)
 
     def initiate_methods(self):
         # Initiate folder structure
@@ -500,8 +516,12 @@ class CaseControler:
         # Setup ht method
         # Setup mc method
         # setup cases
-
         pass
+
+    def _setup_folder_structure(self):
+        subfolders = ['info', 'run_a', 'run_b', 'eqv']
+        for subf in subfolders:
+            os.makedirs(os.path.join(self.out_f, subf), exist_ok=True)
 
     def produce_cases(self):
         pass

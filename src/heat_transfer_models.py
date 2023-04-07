@@ -11,7 +11,7 @@ class GenericHT():
     """Generic class for heat transfer analysis"""
 
     equivalent_curves = {
-        'ISO_834': ecr.StandardFire}
+        'iso_834': ecr.Iso834}
 
     def __init__(self, equivalent_curve):
         self.label = 'Generic'

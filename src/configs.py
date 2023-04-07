@@ -18,15 +18,13 @@ UNIT_CATALOGUE = {
     'flap_angle': {'ui_label': 'fl', 'title': 'Flapping angle', 'unit': 'deg'},
     'T_nf_max': {'ui_label': 'fl', 'title': 'Near field max temperature', 'unit': '°C'}}
 
-HEATING_REGIMES = {
-        'Uniform BS EN 1991-1-2': [hr.UniEC1, {}],
-        'Traveling ISO 16733-2': [hr.TravelingISO16733, {}]}
-
-EQV_METHODS = {
-    '0d_ht_en_1993_1_2':  [htm.SteelEC3, {}]}
-
-EQV_CURVES = {
-    'ISO_834': [ecr.StandardFire, {}]}
-
-RISK_METHODS = {
-    'bs_9999': [rm.Kirby, {}]}
+METHODOLOGIES = {
+    'heating_regimes': {
+        'uni_bs_en_1991_1_2': [hr.UniEC1, {}],
+        'trav_iso_16733_2': [hr.TravelingISO16733, {}]},
+    'eqv_method': {
+        '0d_ht_bs_en_1993_1_2':  [htm.SteelEC3, {'max_itr': 10, 'tol': 5}]},
+    'eqv_curve': {
+        'iso_834': [ecr.Iso834, {}]},
+    'risk_method': {
+        'bs_9999': [rm.Kirby, {}]}}

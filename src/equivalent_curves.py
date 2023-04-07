@@ -18,7 +18,7 @@ class GenericCurve:
         raise NotImplemented
 
 
-class StandardFire(GenericCurve):
+class Iso834(GenericCurve):
     """Standard fire curve"""
 
     def __init__(self):

@@ -306,7 +306,7 @@ class UniEC1(GenericRegime):
     def summarise_parameters(self, param_list='concise'):
         """Returns all calculated parameters in human readable table format
         Inputs:
-            param_list (str): accepts either 'full' or 'concise' to define different interm. parameterts to report
+            param_list (str): accepts either 'full' or 'concise' to define different interm. parameters to report
              default is concise."""
 
         if param_list is 'full':
