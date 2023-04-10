@@ -27,4 +27,4 @@ METHODOLOGIES = {
     'eqv_curve': {
         'iso_834': [ecr.Iso834, {}]},
     'risk_method': {
-        'bs_9999': [rm.Kirby, {}]}}
+        'bs_9999': [rm.KirbyBS9999, {}]}}

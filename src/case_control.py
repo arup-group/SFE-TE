@@ -111,7 +111,7 @@ class AssessmentCase:
         boot_res = []
         for k in range(self.configs['bootstrap_reps']):
             boot = np.random.choice(np.hstack(self.outputs['thermal_response']), len(self.outputs['thermal_response']), replace=True)
-            boot_res.append(np.percentile(boot, 100*self.risk_model.struct_reliability))
+            boot_res.append(np.percentile(boot, 100*self.risk_model.risk_target))
         boot_res = self.rel_interp_f(boot_res)
         self.outputs['eqv_req_conf'] = np.percentile(boot_res, [2.5, 97.5])
 
@@ -127,7 +127,7 @@ class AssessmentCase:
         self.outputs['eqv_req_conf'] = [0, 0]
         for i in range(2):
             f = interpolate.interp1d(self.outputs['reliability_conf'][:,i], self._eqv_assess_range)
-            self.outputs['eqv_req_conf'][i] = f(self.risk_model.struct_reliability)
+            self.outputs['eqv_req_conf'][i] = f(self.risk_model.risk_target)
 
     def _estimate_max_elem_response_at_eqv_req(self):
         if self.analysis_type == 'full':
@@ -164,7 +164,7 @@ class AssessmentCase:
             thermal_hist.append(T_hist)
 
         thermal_response = np.concatenate(thermal_response)
-        target_temp = np.percentile(thermal_response, 100 * self.risk_model.struct_reliability)
+        target_temp = np.percentile(thermal_response, 100 * self.risk_model.risk_target)
         reliability = np.sum(thermal_response < self.lim_factor)/len(thermal_response) #TODO Check this formula
         self.outputs['reliability_curve'].append([equiv_exp, target_temp, reliability])
 
@@ -301,7 +301,7 @@ class AssessmentCase:
                 color='grey',
                 linestyle='dashed',
                 linewidth=1)
-        ax.hlines(y=self.risk_model.struct_reliability,
+        ax.hlines(y=self.risk_model.risk_target,
                   xmin=0,
                   xmax=300,
                   color='red',
@@ -337,17 +337,17 @@ class AssessmentCase:
                 linewidth=1,
                 label='Reliability ECDF interpolation',
                 alpha=0.7)
-        ax.hlines(self.risk_model.struct_reliability,
+        ax.hlines(self.risk_model.risk_target,
                   xmin=0,
                   xmax=300,
                   color='red',
                   linestyle='dashed',
                   label='Reliability target')
-        ax.plot([self.outputs['eqv_req'], self.outputs['eqv_req']], [0, self.risk_model.struct_reliability],
+        ax.plot([self.outputs['eqv_req'], self.outputs['eqv_req']], [0, self.risk_model.risk_target],
                 color='green',
                 label='Eqv. severity requirement')
         ax.fill_betweenx(
-            y=[0, self.risk_model.struct_reliability],
+            y=[0, self.risk_model.risk_target],
             x1=[self.outputs['eqv_req_conf'][0], self.outputs['eqv_req_conf'][0]],
             x2=[self.outputs['eqv_req_conf'][1], self.outputs['eqv_req_conf'][1]],
             alpha=0.2,
@@ -487,6 +487,9 @@ class AssessmentCase:
 class CaseControler:
 
     def __init__(self, inputs, out_f):
+        self.risk_method = None
+        self.ht_method = None
+
         self.out_f = out_f
         self.inputs = inputs
         self._setup_folder_structure()
@@ -510,18 +513,32 @@ class CaseControler:
         with open(os.path.join(self.out_f, 'info', 'inputs.json'), 'w') as f:
             json.dump(self.inputs, f, indent=4)
 
-    def initiate_methods(self):
-        # Initiate folder structure
-        # Setup risk method
-        # Setup ht method
-        # Setup mc method
-        # setup cases
-        pass
-
     def _setup_folder_structure(self):
         subfolders = ['info', 'run_a', 'run_b', 'eqv']
         for subf in subfolders:
             os.makedirs(os.path.join(self.out_f, subf), exist_ok=True)
+
+
+    def initiate_methods(self):
+        """Method performs number of initial calculations before main analysis"""
+
+        # Setup risk method
+        m_label = list(self.inputs['risk_method'].keys())[0]
+        m_config = self.inputs['risk_method'][m_label]
+        self.risk_method = cfg.METHODOLOGIES['risk_method'][m_label][0](**m_config)
+
+        # Setup ht method
+        # calculation of eqv protection
+        # report of eqv protection
+
+        # Setup mc method
+
+        # setup run a cases
+
+    def conduct_pre_run_calculations(self):
+        # calculate risk target
+        self.risk_method.assess_risk_target()
+
 
     def produce_cases(self):
         pass

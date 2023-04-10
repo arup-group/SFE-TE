@@ -20,7 +20,7 @@ class GenericRiskModel:
         raise NotImplementedError
 
 
-class Kirby(GenericRiskModel):
+class KirbyBS9999(GenericRiskModel):
 
     def __init__(self, sprinkler_reliability, building_height):
         super().__init__()
@@ -47,6 +47,7 @@ class Kirby(GenericRiskModel):
 
         self.total_reliability = 1 - 64.8/self.building_height**2
         self.struct_reliability = (self.total_reliability - self.sprinkler_reliability/100)/(1 - self.sprinkler_reliability/100)
+        self.risk_target = self.struct_reliability
 
 
     def _sprinkler_sensitivity(self, analysis_case):
