@@ -34,12 +34,11 @@ class GenericHT():
 
 class SteelEC3(GenericHT):
     # Some constants
-    PROT_THICK_RANGE = [0.0001, 0.1, 0.0005]  # covers 1 to 240 min to standard fire curve up to 400 C limiting temperature
     LABEL = 'Steel EC3 HT'
     DESCR = '1D heat transfer in accordance with BS EN 1993-1-2'
 
     def __init__(self, equivalent_curve, A_v, c_p, k_p, ro_p, lim_temp, dt, T_amb,
-                 max_itr, tol, eqv_max, eqv_step):
+                 max_itr, tol, eqv_max, eqv_step, prot_thick_range):
         super().__init__(equivalent_curve)
         self.prot_prop = {'c_p': c_p, 'k_p': k_p, 'ro_p': ro_p}  # TODO to be refactored
         self.sect_prop = self._process_sample_section_geometry({'A_v': A_v})  # TODO to be refactored
@@ -50,6 +49,7 @@ class SteelEC3(GenericHT):
         self.tol = tol
         self.eqv_max = eqv_max
         self.eqv_step = eqv_step
+        self.prot_thick_range = prot_thick_range
         self._issue_steel_hc_warn = [True, True]  # Counter for issuing warning from steel hc only once
 
         # TODO create interpolate prot_thickness wrapper to give warnings when extrapolating
@@ -95,7 +95,7 @@ class SteelEC3(GenericHT):
         A_v = self.sect_prop['A_v']
 
         # Get array of protection thicknesses
-        prot_thick = np.arange(SteelEC3.PROT_THICK_RANGE[0], SteelEC3.PROT_THICK_RANGE[1], SteelEC3.PROT_THICK_RANGE[2])
+        prot_thick = np.arange(self.prot_thick_range[0], self.prot_thick_range[1], self.prot_thick_range[2])
 
         # Create initial temperature array equal to ambient of same shape
         T_m = np.full_like(prot_thick, self.T_amb)

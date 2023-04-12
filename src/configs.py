@@ -23,7 +23,8 @@ METHODOLOGIES = {
         'uni_bs_en_1991_1_2': [hr.UniEC1, {}],
         'trav_iso_16733_2': [hr.TravelingISO16733, {}]},
     'eqv_method': {
-        '0d_ht_bs_en_1993_1_2':  [em.SteelEC3, {'max_itr': 10, 'tol': 5}]},
+        # Note: prot_thick_range covers 1 to 240 min to standard fire curve up to 400 C limiting temperature
+        '0d_ht_bs_en_1993_1_2':  [em.SteelEC3, {'max_itr': 10, 'tol': 5, 'prot_thick_range': [0.0001, 0.1, 0.0005]}]},
     'eqv_curve': {
         'iso_834': [ecr.Iso834, {}]},
     'risk_method': {
