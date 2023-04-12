@@ -2,26 +2,22 @@ try:
     import equivalent_curves as ecr
 except ModuleNotFoundError:
     import src.equivalent_curves as ecr
+import configs as cfg
 import numpy as np
 from scipy.interpolate import interp1d
 
-
-
 class GenericHT():
     """Generic class for heat transfer analysis"""
-
-    equivalent_curves = {
-        'iso_834': ecr.Iso834}
+    LABEL = 'Generic'
+    DESCR = 'Generic description'
 
     def __init__(self, equivalent_curve):
-        self.label = 'Generic'
-        self.descr = 'Generic description'
         self.ecr = self._load_equivalent_curve(equivalent_curve)
         self.equiv_prot_req_data = None
         self.equiv_prot_interp = None
 
     def _load_equivalent_curve(self, equivalent_curve):
-        return GenericHT.equivalent_curves[equivalent_curve]()
+        return cfg.METHODOLOGIES['eqv_curve'][equivalent_curve][0]()
 
     def _process_sample_section_geometry(self, sect_prop):
         raise NotImplementedError
@@ -39,22 +35,25 @@ class GenericHT():
 class SteelEC3(GenericHT):
     # Some constants
     PROT_THICK_RANGE = [0.0001, 0.1, 0.0005]  # covers 1 to 240 min to standard fire curve up to 400 C limiting temperature
+    LABEL = 'Steel EC3 HT'
+    DESCR = '1D heat transfer in accordance with BS EN 1993-1-2'
 
-    def __init__(self, equivalent_curve, sect_prop, prot_prop, T_lim, eqv_max, dt, T_amb, optm_config):
+    def __init__(self, equivalent_curve, A_v, c_p, k_p, ro_p, lim_temp, dt, T_amb,
+                 max_itr, tol, eqv_max, eqv_step):
         super().__init__(equivalent_curve)
-
-        self.label = 'Steel EC3 HT'
-        self.descr = '1D heat transfer in accordance with BS EN 1993-1-2'
-
-        self.prot_prop = prot_prop
-        self.sect_prop = self._process_sample_section_geometry(sect_prop)
-
-        self.T_lim = T_lim
+        self.prot_prop = {'c_p': c_p, 'k_p': k_p, 'ro_p': ro_p}  # TODO to be refactored
+        self.sect_prop = self._process_sample_section_geometry({'A_v': A_v})  # TODO to be refactored
+        self.T_lim = lim_temp
         self.T_amb = T_amb
-        self.eqv_max = eqv_max
         self.dt = dt  # time step size
-        self._issue_steel_hc_warn = [True, True] # Counter for issuing warning from steel hc only once #TODO
-        self.optm_config = optm_config
+        self.max_itr = max_itr
+        self.tol = tol
+        self.eqv_max = eqv_max
+        self.eqv_step = eqv_step
+        self._issue_steel_hc_warn = [True, True]  # Counter for issuing warning from steel hc only once
+
+        # TODO create interpolate prot_thickness wrapper to give warnings when extrapolating
+        # TODO create protection thickness plot and graph
 
     def _process_sample_section_geometry(self, sect_prop):
         """Return section factor which is needed for heat transfer calculation
@@ -83,16 +82,16 @@ class SteelEC3(GenericHT):
             P = 2 * sect_prop['D'] + 3 * sect_prop['B'] - 2 * sect_prop['wb_t']
         return {'A_v': P / A}
 
-    def get_equivelant_protection(self):
+    def get_equivalent_protection(self):
         """Calculates an interpolation curve of required fire protection material for equivalent protection
         thickness based on given gas temperature curve, section, material, and protection material properties.
          INTEGRATION TEST REQUIRED - to be checked against predictions of the SFE toolkit
          """
 
         # Get some properties
-        c_p = self.prot_prop['c']
-        k_p = self.prot_prop['k']
-        ro_p = self.prot_prop['ro']
+        c_p = self.prot_prop['c_p']
+        k_p = self.prot_prop['k_p']
+        ro_p = self.prot_prop['ro_p']
         A_v = self.sect_prop['A_v']
 
         # Get array of protection thicknesses

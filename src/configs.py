@@ -1,5 +1,5 @@
 import heating_regimes as hr
-import heat_transfer_models as htm
+import equivalence_methods as em
 import equivalent_curves as ecr
 import risk_models as rm
 
@@ -23,7 +23,7 @@ METHODOLOGIES = {
         'uni_bs_en_1991_1_2': [hr.UniEC1, {}],
         'trav_iso_16733_2': [hr.TravelingISO16733, {}]},
     'eqv_method': {
-        '0d_ht_bs_en_1993_1_2':  [htm.SteelEC3, {'max_itr': 10, 'tol': 5}]},
+        '0d_ht_bs_en_1993_1_2':  [em.SteelEC3, {'max_itr': 10, 'tol': 5}]},
     'eqv_curve': {
         'iso_834': [ecr.Iso834, {}]},
     'risk_method': {
