@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from textwrap import dedent
+import collections
+import itertools
 
 # UNIT_CATALOGUE = {
 #     'A_c': {'ui_label': 'ca', 'title': 'Compartment area', 'unit': 'm$^2$'},
@@ -491,6 +493,7 @@ class CaseControler:
         self.risk_method = None
         self.eqv_method = None
         self.mc_method = None
+        self.cases = {}
 
         self.out_f = out_f
         self.inputs = inputs
@@ -525,7 +528,6 @@ class CaseControler:
         m_label = list(self.inputs['risk_method'].keys())[0]
         m_config = self.inputs['risk_method'][m_label]
         self.risk_method = cfg.METHODOLOGIES['risk_method'][m_label][0](**m_config)
-
         # Setup eqv method
         m_label = list(self.inputs['eqv_method'].keys())[0]
         eqv_curve = list(self.inputs['eqv_curve'].keys())[0]
@@ -542,10 +544,40 @@ class CaseControler:
         self.risk_method.assess_risk_target()
         # calculate eqv_protection
         self.eqv_method.get_equivalent_protection()
+        #TODO plot equivalent protection
 
+    def _get_cases(self):
 
-    def produce_cases(self):
-        pass
+        # Get only inputs having more than one name
+
+        # make list of name parameters based on iteration number.
+        # reject those with only one parameters
+        # concatinate into a name
+
+        #Order the dictionary of parameters to ensure correct indexing
+        self.inputs['parameters'] = collections.OrderedDict(sorted(self.inputs['parameters'].items()))
+
+        if self.inputs['param_mode'] == 'grid':
+
+            tmp_list_inputs = [self.inputs['parameters'][k] for k in self.inputs['parameters']]
+            tmp_list_numeric = [list(range(1, len(k)+1)) for k in tmp_list_inputs]
+            all_cases = itertools.product(*tmp_list_inputs)
+            all_cases_numeric = itertools.product(*tmp_list_numeric)
+            for i, (case, num) in enumerate(zip(all_cases, all_cases_numeric)):
+                self.cases[f'{(i+1):03d}'] = {
+                    'label': CaseControler._create_case_name(params=self.inputs['parameters'],  num_mask=num, num_map=tmp_list_numeric),
+                    'params': {label: case for (label, case) in zip(self.inputs['parameters'], case)}}
+        elif self.parametrisation == 'one_at_a_time':
+            pass
+        elif self.parametrisation == 'parallel':
+            pass
+
+    @staticmethod
+    def _create_case_name(params, num_mask, num_map):
+        # TODO - write documentation and refractor to be applicable for all cases
+        tmp = [f'{cfg.UNIT_CATALOGUE[key]["ui_label"]}{j}' for (key, j, m) in zip(params, num_mask, num_map) if len(m) != 1]
+        return '_'.join(tmp)
+
 
     def run_a_study(self):
         pass

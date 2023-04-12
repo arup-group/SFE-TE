@@ -35,7 +35,7 @@ class GenericHT():
 class SteelEC3(GenericHT):
     # Some constants
     LABEL = 'Steel EC3 HT'
-    DESCR = '1D heat transfer in accordance with BS EN 1993-1-2'
+    DESCR = '0D heat transfer in accordance with BS EN 1993-1-2'
 
     def __init__(self, equivalent_curve, A_v, c_p, k_p, ro_p, lim_temp, dt, T_amb,
                  max_itr, tol, eqv_max, eqv_step, prot_thick_range):

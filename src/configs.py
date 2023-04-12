@@ -12,11 +12,11 @@ UNIT_CATALOGUE = {
     'remain_frac': {'ui_label': 'trf', 'title': 'Thermal resilience', 'unit': '-'},
     'fabr_inrt': {'ui_label': 'ftr', 'title': 'Fabric thermal inertia', 'unit': 'J/m$^2$s$^{1/2}$K'},
     'q_f_d': {'ui_label': 'fl', 'title': 'Fuel load', 'unit': 'MJ/m$^2$'},
-    'Q': {'ui_label': 'fl', 'title': 'Heat release rate per unit area', 'unit': 'KW/m$^2$'},
-    't_lim': {'ui_label': 'fl', 'title': 'Fire growth rate', 'unit': 'min'},
-    'spr_rate': {'ui_label': 'fl', 'title': 'Fire spread rate', 'unit': 'mm/s'},
-    'flap_angle': {'ui_label': 'fl', 'title': 'Flapping angle', 'unit': 'deg'},
-    'T_nf_max': {'ui_label': 'fl', 'title': 'Near field max temperature', 'unit': '°C'}}
+    'Q': {'ui_label': 'hrr', 'title': 'Heat release rate per unit area', 'unit': 'KW/m$^2$'},
+    't_lim': {'ui_label': 'gr', 'title': 'Fire growth rate', 'unit': 'min'},
+    'spr_rate': {'ui_label': 'spr', 'title': 'Fire spread rate', 'unit': 'mm/s'},
+    'flap_angle': {'ui_label': 'fa', 'title': 'Flapping angle', 'unit': 'deg'},
+    'T_nf_max': {'ui_label': 'tnf', 'title': 'Near field max temperature', 'unit': '°C'}}
 
 METHODOLOGIES = {
     'heating_regimes': {
