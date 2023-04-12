@@ -1,5 +1,6 @@
 import configs as cfg
 import heating_regimes as hr
+import monte_carlo as mc
 import pandas as pd
 import json
 import numpy as np
@@ -489,6 +490,7 @@ class CaseControler:
     def __init__(self, inputs, out_f):
         self.risk_method = None
         self.eqv_method = None
+        self.mc_method = None
 
         self.out_f = out_f
         self.inputs = inputs
@@ -504,10 +506,8 @@ class CaseControler:
             #if input is not dict of dict then transform it as dictionary
             if not isinstance(self.inputs[method], dict):
                 self.inputs[method] = {self.inputs[method]: {}}
-
             for i in self.inputs[method]:
                 self.inputs[method][i].update(cfg.METHODOLOGIES[method][i][1])
-
 
     def _save_inputs(self):
         with open(os.path.join(self.out_f, 'info', 'inputs.json'), 'w') as f:
@@ -518,7 +518,6 @@ class CaseControler:
         for subf in subfolders:
             os.makedirs(os.path.join(self.out_f, subf), exist_ok=True)
 
-
     def initiate_methods(self):
         """Method performs number of initial calculations before main analysis"""
 
@@ -527,26 +526,20 @@ class CaseControler:
         m_config = self.inputs['risk_method'][m_label]
         self.risk_method = cfg.METHODOLOGIES['risk_method'][m_label][0](**m_config)
 
-
         # Setup eqv method
         m_label = list(self.inputs['eqv_method'].keys())[0]
         eqv_curve = list(self.inputs['eqv_curve'].keys())[0]
         m_config = self.inputs['eqv_method'][m_label]
         self.eqv_method = cfg.METHODOLOGIES['eqv_method'][m_label][0](
             equivalent_curve=eqv_curve, **m_config)
-
-
-        # calculation of eqv protection
-        # report of eqv protection
-
         # Setup mc method
+        self.mc_method = mc.ProbControl(seed=self.inputs['random_seed'])
 
         # setup run a cases
 
     def conduct_pre_run_calculations(self):
         # calculate risk target
         self.risk_method.assess_risk_target()
-
         # calculate eqv_protection
         self.eqv_method.get_equivalent_protection()
 
