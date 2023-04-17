@@ -443,7 +443,7 @@ class AssessmentCase:
             list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
             filename='geometry_params')
         self._plot_inputs(
-            list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max'],
+            list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max', 'T_amb'],
             filename='fire_params')
         self._plot_convergence_study()
 
@@ -466,7 +466,7 @@ class AssessmentCase:
             list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
             filename='geometry_params')
         self._plot_inputs(
-            list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max'],
+            list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max', 'T_amb'],
             filename='fire_params')
         self._plot_reliability_curve()
         self._plot_max_el_temp_duration()
@@ -537,8 +537,6 @@ class CaseControler:
         # Setup mc method
         self.mc_method = mc.ProbControl(seed=self.inputs['random_seed'])
 
-        # setup run a cases
-
     def conduct_pre_run_calculations(self):
         # calculate risk target
         self.risk_method.assess_risk_target()
@@ -548,13 +546,6 @@ class CaseControler:
 
     def _get_cases(self):
 
-        # Get only inputs having more than one name
-
-        # make list of name parameters based on iteration number.
-        # reject those with only one parameters
-        # concatinate into a name
-
-        #Order the dictionary of parameters to ensure correct indexing
         self.inputs['parameters'] = collections.OrderedDict(sorted(self.inputs['parameters'].items()))
         tmp_list_inputs = [self.inputs['parameters'][k] for k in self.inputs['parameters']]
         tmp_list_numeric_mask = [list(range(1, len(k) + 1)) for k in tmp_list_inputs]
@@ -581,7 +572,6 @@ class CaseControler:
                 self.cases[f'{(i + 1):03d}'] = {
                     'label': f'input_{i+1}',
                     'params': {label: case for (label, case) in zip(self.inputs['parameters'], case)}}
-
 
     @staticmethod
     def _create_case_name(params, num_mask, input_num_map):
@@ -618,10 +608,28 @@ class CaseControler:
         return combs
 
     def run_a_study(self):
-        pass
+        self._get_cases()
+
+        for case_ID in self.cases:
+
+            case = AssessmentCase(
+                name=self.cases[case_ID]['label'],
+                ID=case_ID,
+                input_defs=input_defs,
+                risk_model=risk_method,
+                mc_engine=mc,
+                ht_model=ht,
+                heating_regimes_inputs=heating_regimes,
+                lim_factor=550,
+                save_loc=r'dump',
+                analysis_type='quick',
+                sample_size=sample_size,
+                configs=configs)
+
 
     def process_a_study_results(self):
         pass
 
     def run_b_study(self):
         pass
+

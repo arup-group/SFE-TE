@@ -94,11 +94,14 @@ class SteelEC3(GenericHT):
         ro_p = self.prot_prop['ro_p']
         A_v = self.sect_prop['A_v']
 
+        # Get initial condition for eqv. curve method
+        ini_temp = self.ecr.get_initial_condition()
+
         # Get array of protection thicknesses
         prot_thick = np.arange(self.prot_thick_range[0], self.prot_thick_range[1], self.prot_thick_range[2])
 
         # Create initial temperature array equal to ambient of same shape
-        T_m = np.full_like(prot_thick, self.T_amb)
+        T_m = np.full_like(prot_thick, ini_temp)
 
         times = np.arange(0, 60*self.eqv_max, self.dt)
 
@@ -124,7 +127,7 @@ class SteelEC3(GenericHT):
             dT = k_p * A_v * (T_g - T_m) * self.dt / ((prot_thick * c_a * ro_a) * (1 + fi / 3)) - (np.exp(fi/10)-1)*(T_g - T_g_prev)
             dT[(dT < 0) & (T_g - T_g_prev > 0)] = 0  # enforcing condition for BS EN 1993-1-2 eq. 4.27
             T_m = T_m + dT
-            T_m[T_m < self.T_amb] = self.T_amb  # Temperature cannot go below ambient.
+            T_m[T_m < ini_temp] = ini_temp  # Temperature cannot go below eqv. curve initial condition
 
             #kept for debugging purposes - TO BE REMOVED ONCE COMPLETE
             all_fi[i, :] = fi

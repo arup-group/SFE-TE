@@ -17,6 +17,9 @@ class GenericCurve:
     def get_delta_temp(self):
         raise NotImplemented
 
+    def get_initial_condition(self):
+        raise NotImplemented
+
 
 class Iso834(GenericCurve):
     """Standard fire curve"""
@@ -42,6 +45,9 @@ class Iso834(GenericCurve):
          where t2>t1 """
 
         return self.get_temp(t2) - self.get_temp(t1)
+
+    def get_initial_condition(self):
+        return 20
 
 
 
