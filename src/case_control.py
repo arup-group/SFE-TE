@@ -43,7 +43,7 @@ class AssessmentCase:
         'Traveling ISO 16733-2': hr.TravelingISO16733}
 
     def __init__(self, name, ID, input_defs, risk_model, mc_engine, ht_model, heating_regimes_inputs,
-                 lim_factor, save_loc, analysis_type, sample_size, configs):
+                 save_loc, analysis_type, sample_size, bootstrap_rep):
         self.name = name
         self.ID = ID
         self.input_defs = input_defs
@@ -51,10 +51,9 @@ class AssessmentCase:
         self.mc_engine = mc_engine  # class instance to the
         self.ht_model = ht_model
         self.heating_regimes_inputs = heating_regimes_inputs  # dict list of heating regimes
-        self.lim_factor = lim_factor  # limiting temperature
         self.analysis_type = analysis_type # quick of full
         self.sample_size = sample_size
-        self.configs = configs  # Analysis configs #TODO Tidy up configurations
+        self.bootstrap_rep = bootstrap_rep
 
         # Variables which will be updated
         self.case_root_folder = None
@@ -74,6 +73,8 @@ class AssessmentCase:
                         'max_el_resp': [], # Vector of maximum element temperatures at target resistance
                         'fire_eqv': []}  # Vector of eqv. fire severtity for each fire
 
+        #
+        self.lim_factor = self.ht_model.limiting_factor
         self._setup_save_folder_structure(save_loc)
 
 
@@ -112,15 +113,15 @@ class AssessmentCase:
 
     def _sample_sensitivity_quick(self):
         boot_res = []
-        for k in range(self.configs['bootstrap_reps']):
+        for k in range(self.bootstrap_reps):
             boot = np.random.choice(np.hstack(self.outputs['thermal_response']), len(self.outputs['thermal_response']), replace=True)
             boot_res.append(np.percentile(boot, 100*self.risk_model.risk_target))
         boot_res = self.rel_interp_f(boot_res)
         self.outputs['eqv_req_conf'] = np.percentile(boot_res, [2.5, 97.5])
 
     def _sample_sensitivity_full(self):
-        boot_res = np.zeros((self.configs['bootstrap_reps'], len(self._eqv_assess_range)))
-        for k in range(self.configs['bootstrap_reps']):
+        boot_res = np.zeros((self.bootstrap_reps, len(self._eqv_assess_range)))
+        for k in range(self.bootstrap_reps):
             rnd_ind = np.random.choice(range(self.outputs['thermal_response'].shape[1]), self.outputs['thermal_response'].shape[1], replace=True)
             new_resp = self.outputs['thermal_response'][:, rnd_ind]
             boot_res[k, :] = np.sum(new_resp < self.lim_factor, axis=1)/new_resp.shape[1]
@@ -142,7 +143,7 @@ class AssessmentCase:
     def _estimate_eqv_rating_of_all_fires(self):
         for i in range(self.outputs['thermal_response'].shape[1]):
             f = interpolate.interp1d(
-                self.outputs['thermal_response'][:, i], self._eqv_assess_range, fill_value=(self.configs['eqv_max']+30, 2), bounds_error=False)
+                self.outputs['thermal_response'][:, i], self._eqv_assess_range, fill_value=(self.ht_model.eqv_max+30, 2), bounds_error=False)
             self.outputs['fire_eqv'].append(f(self.lim_factor))
         self.outputs['fire_eqv'] = np.array(self.outputs['fire_eqv']).round(0)
 
@@ -198,8 +199,8 @@ class AssessmentCase:
 
     def _assess_full_eqv_range(self):
 
-        self._eqv_assess_range = np.arange(5, self.configs['eqv_max'], self.configs['eqv_step'])
-        self._eqv_assess_range = np.append(self._eqv_assess_range, self.configs['eqv_max'])
+        self._eqv_assess_range = np.arange(5, self.ht_model.eqv_max, self.ht_model.eqv_step)
+        self._eqv_assess_range = np.append(self._eqv_assess_range, self.ht_model.eqv_step)
         for t_eqv in self._eqv_assess_range:
             self._assess_single_equiv(t_eqv, for_optimisation=False)
         self.outputs['thermal_response'] = np.array(self.outputs['thermal_response'])
@@ -275,8 +276,8 @@ class AssessmentCase:
         fig, ax = plt.subplots(figsize=(10, 6))
         # calculate hist scale factor for legibility
         binned = list(np.histogram(self.outputs['fire_eqv'],
-                                   bins=int(self.configs['eqv_max'] / self.configs['eqv_step']),
-                                   range=[0, self.configs['eqv_max']]))
+                                   bins=int(self.ht_model.eqv_max / self.ht_model.eqv_step),
+                                   range=[0, self.ht_model.eqv_max]))
         factor = 0.5 / np.max(binned[0] / self.sample_size)
 
         begin = 0
@@ -285,8 +286,8 @@ class AssessmentCase:
             if regime.is_empty: continue  # skip empty methodologies
 
             data = self.outputs['fire_eqv'][begin:begin + len(regime.params['A_c'])]
-            binned = list(np.histogram(data, bins=int(self.configs['eqv_max'] / self.configs['eqv_step']),
-                                       range=[0, self.configs['eqv_max']]))
+            binned = list(np.histogram(data, bins=int(self.ht_model.eqv_max / self.ht_model.eqv_step),
+                                       range=[0, self.ht_model.eqv_max]))
             binned[0] = np.array(binned[0]) / self.sample_size * factor
             ax.bar(x=binned[1][:-1], height=binned[0], width=np.diff(binned[1]), align='edge', alpha=0.5,
                    label=regime.NAME)
@@ -358,7 +359,7 @@ class AssessmentCase:
             label='95% conf. interval')
 
         ax.set_ylim([0, 1.1])
-        ax.set_xlim([0, self.configs['eqv_max']])
+        ax.set_xlim([0, self.ht_model.eqv_max])
         ax.set_xticks(np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 10))
         ax.set_yticks(np.arange(0, 1.1, 0.1))
         ax.set_xlabel('Equivalent fire severity rating (min)')
@@ -611,20 +612,19 @@ class CaseControler:
         self._get_cases()
 
         for case_ID in self.cases:
-
-            case = AssessmentCase(
+            self.case = AssessmentCase(
                 name=self.cases[case_ID]['label'],
                 ID=case_ID,
-                input_defs=input_defs,
-                risk_model=risk_method,
-                mc_engine=mc,
-                ht_model=ht,
-                heating_regimes_inputs=heating_regimes,
-                lim_factor=550,
-                save_loc=r'dump',
+                input_defs=self.cases[case_ID]['params'],
+                risk_model=self.risk_method,
+                mc_engine=self.mc_method,
+                ht_model=self.eqv_method,
+                heating_regimes_inputs=self.inputs['heating_regimes'],
+                save_loc=os.path.join(self.out_f, 'run_a'),
                 analysis_type='quick',
-                sample_size=sample_size,
-                configs=configs)
+                sample_size=self.inputs['run_a_sample_size'],
+                bootstrap_rep=self.inputs['bootstrap_rep'])
+            print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
 
 
     def process_a_study_results(self):

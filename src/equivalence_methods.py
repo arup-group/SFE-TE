@@ -15,6 +15,11 @@ class GenericHT():
         self.ecr = self._load_equivalent_curve(equivalent_curve)
         self.equiv_prot_req_data = None
         self.equiv_prot_interp = None
+        self.eqv_step = None  # Incremental step at which equivalency is assessed
+        self.eqv_max = None  # Maximum equivalence range
+        self.lim_factor = None  # Parameter value at which eqv. is asssessed
+        self.max_itr = None  # Max iterations for convergence study
+        self.tol = None  # Max tolerance for convergence study
 
     def _load_equivalent_curve(self, equivalent_curve):
         return cfg.METHODOLOGIES['eqv_curve'][equivalent_curve][0]()
@@ -50,7 +55,9 @@ class SteelEC3(GenericHT):
         self.eqv_max = eqv_max
         self.eqv_step = eqv_step
         self.prot_thick_range = prot_thick_range
+
         self._issue_steel_hc_warn = [True, True]  # Counter for issuing warning from steel hc only once
+        self.limiting_factor = self.T_lim
 
         # TODO create interpolate prot_thickness wrapper to give warnings when extrapolating
         # TODO create protection thickness plot and graph
