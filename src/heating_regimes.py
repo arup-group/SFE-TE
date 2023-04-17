@@ -57,9 +57,10 @@ class UniEC1(GenericRegime):
     SAVE_NAME = 'uni_bs_en_1991_1_2'
     DESCRIPTION = 'Some description'
 
-    def __init__(self, design_fire_inputs, crit_value, Of_limits):
+    def __init__(self, design_fire_inputs, crit_value, Of_limits, max_fire_duration):
         super().__init__(design_fire_inputs, crit_value)
         self.Of_limits = Of_limits
+        self.max_fire_duration = max_fire_duration
 
     def _get_relevant_design_fire_indices(self, design_fire_inputs):
         """Samples only relevant data from design fires based on criteria

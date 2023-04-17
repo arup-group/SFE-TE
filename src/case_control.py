@@ -38,9 +38,7 @@ import itertools
 class AssessmentCase:
 
     UNITS = cfg.UNIT_CATALOGUE
-    HEATING_REGIMES = {
-        'Uniform BS EN 1991-1-2': hr.UniEC1,
-        'Traveling ISO 16733-2': hr.TravelingISO16733}
+    HEATING_REGIMES = cfg.METHODOLOGIES['heating_regimes']
 
     def __init__(self, name, ID, input_defs, risk_model, mc_engine, ht_model, heating_regimes_inputs,
                  save_loc, analysis_type, sample_size, bootstrap_rep):
@@ -94,14 +92,14 @@ class AssessmentCase:
         #initialize heating regimes
         for i, regime in enumerate(self.heating_regimes_inputs):
             self.heating_regimes.append(
-                AssessmentCase.HEATING_REGIMES[regime](
+                AssessmentCase.HEATING_REGIMES[regime][0](
                     design_fire_inputs=self.inputs['values'], **self.heating_regimes_inputs[regime]))
             self.heating_regimes[i].perform_initial_calculations()
             self.heating_regimes[i].check_bad_samples()
 
     def _assess_convergence_success(self):
         """Checks whether convergence is within tolerance limits"""
-        self.outputs['success_conv'] = self.optm_result.fun < self.ht_model.optm_config['tol']
+        self.outputs['success_conv'] = self.optm_result.fun < self.ht_model.tol
 
     def _estimate_eqv_req(self):
         """Interpolates convergence results to improve accuracy"""
@@ -113,15 +111,15 @@ class AssessmentCase:
 
     def _sample_sensitivity_quick(self):
         boot_res = []
-        for k in range(self.bootstrap_reps):
+        for k in range(self.bootstrap_rep):
             boot = np.random.choice(np.hstack(self.outputs['thermal_response']), len(self.outputs['thermal_response']), replace=True)
             boot_res.append(np.percentile(boot, 100*self.risk_model.risk_target))
         boot_res = self.rel_interp_f(boot_res)
         self.outputs['eqv_req_conf'] = np.percentile(boot_res, [2.5, 97.5])
 
     def _sample_sensitivity_full(self):
-        boot_res = np.zeros((self.bootstrap_reps, len(self._eqv_assess_range)))
-        for k in range(self.bootstrap_reps):
+        boot_res = np.zeros((self.bootstrap_rep, len(self._eqv_assess_range)))
+        for k in range(self.bootstrap_rep):
             rnd_ind = np.random.choice(range(self.outputs['thermal_response'].shape[1]), self.outputs['thermal_response'].shape[1], replace=True)
             new_resp = self.outputs['thermal_response'][:, rnd_ind]
             boot_res[k, :] = np.sum(new_resp < self.lim_factor, axis=1)/new_resp.shape[1]
@@ -194,8 +192,8 @@ class AssessmentCase:
             lambda x: self._assess_single_equiv(x, for_optimisation=True),
             bounds=(1, self.ht_model.eqv_max),
             method='bounded',
-            options={'maxiter': self.ht_model.optm_config['max_itr'],
-                     'xatol': self.ht_model.optm_config['tol']})
+            options={'maxiter': self.ht_model.max_itr,
+                     'xatol': self.ht_model.tol})
 
     def _assess_full_eqv_range(self):
 
@@ -214,7 +212,6 @@ class AssessmentCase:
             if regime.is_empty:
                 continue # skip empty methodologies
             data[i] = regime.summarise_parameters(param_list='concise')
-            print(begin, len(data[i]))
             data[i]['max_el_resp'] = self.outputs['max_el_resp'][begin:begin+len(data[i])]
             try:
                 data[i]['fire_eqv'] = self.outputs['fire_eqv'][begin:begin + len(data[i])]
@@ -624,7 +621,9 @@ class CaseControler:
                 analysis_type='quick',
                 sample_size=self.inputs['run_a_sample_size'],
                 bootstrap_rep=self.inputs['bootstrap_rep'])
+            self.case.run_analysis()
             print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
+            print(f'FINAL: {self.case.outputs["eqv_req"]}, conf: {self.case.outputs["eqv_req_conf"]}')
 
 
     def process_a_study_results(self):

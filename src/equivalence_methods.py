@@ -191,9 +191,9 @@ class SteelEC3(GenericHT):
             all_temps (array_like) - array of complete thermal response history in shape (sample size x times)"""
 
         # Get some properties
-        c_p = self.prot_prop['c']
-        k_p = self.prot_prop['k']
-        ro_p = self.prot_prop['ro']
+        c_p = self.prot_prop['c_p']
+        k_p = self.prot_prop['k_p']
+        ro_p = self.prot_prop['ro_p']
         A_v = self.sect_prop['A_v']
 
         # Get array of protection thicknesses

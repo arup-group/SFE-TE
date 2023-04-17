@@ -16,7 +16,8 @@ UNIT_CATALOGUE = {
     't_lim': {'ui_label': 'gr', 'title': 'Fire growth rate', 'unit': 'min'},
     'spr_rate': {'ui_label': 'spr', 'title': 'Fire spread rate', 'unit': 'mm/s'},
     'flap_angle': {'ui_label': 'fa', 'title': 'Flapping angle', 'unit': 'deg'},
-    'T_nf_max': {'ui_label': 'tnf', 'title': 'Near field max temperature', 'unit': '°C'}}
+    'T_nf_max': {'ui_label': 'tnf', 'title': 'Near field max temperature', 'unit': '°C'},
+    'T_amb': {'ui_label': 'amb', 'title': 'Ambient temperature', 'unit': '°C'}}
 
 METHODOLOGIES = {
     'heating_regimes': {
