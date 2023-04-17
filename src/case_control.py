@@ -575,9 +575,13 @@ class CaseControler:
                     'label': CaseControler._create_case_name(
                         params=self.inputs['parameters'],  num_mask=num_mask, input_num_map=tmp_list_numeric_mask),
                     'params': {label: case for (label, case) in zip(self.inputs['parameters'], case)}}
+        elif self.inputs['param_mode'] == 'parallel':
+            for i in range(min([len(k) for k in tmp_list_inputs])):
+                case = [value[i] for value in tmp_list_inputs]
+                self.cases[f'{(i + 1):03d}'] = {
+                    'label': f'input_{i+1}',
+                    'params': {label: case for (label, case) in zip(self.inputs['parameters'], case)}}
 
-        elif self.parametrisation == 'parallel':
-            pass
 
     @staticmethod
     def _create_case_name(params, num_mask, input_num_map):
