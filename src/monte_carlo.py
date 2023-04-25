@@ -113,6 +113,59 @@ class UniBiomodalDistr(GenericDistr):
     def report_params(self):
         return {'label': UniBiomodalDistr.label, 'mode': self.m, 'h1': self.h1, 'h2': self.h2}
 
+class RectPulseDistr(GenericDistr):
+    label = 'Rectangular Pulse Distribution'
+
+    def __init__(self, params, generator):
+        super().__init__(params, generator)
+
+    def _unpack_params(self, params):
+        """
+        Inputs:
+            params (array like): 4 element list, [l,r, p1, p2, A], where l is the left bound, r is the right bound,
+            p1, p2 (0 to 1, p1<p2) is pulse interval fraction and A (0, 1) is fraction of samples within the interval fraction"""
+
+        self.l, self.r, self.p1, self.p2, self.A = params[0], params[1], params[2], params[3], params[4]
+        if self.p1 > 1 or self.p2 < 0:
+            raise ValueError(f'Incorrect input for {RectPulseDistr.label}. P1 = {self.p1} must be between 0 and 1.')
+        if self.p2 > 1 or self.p2 < 0:
+            raise ValueError(f'Incorrect input for {RectPulseDistr.label}. P2 = {self.p2} must be between 0 and 1.')
+        if self.p1 > self.p2:
+            raise ValueError(
+                f'Incorrect input for {RectPulseDistr.label}. P1 > P2. P1 must be smaller than P2.')
+        if self.A > 1 or self.A < 0:
+            raise ValueError(f'Incorrect input for {RectPulseDistr.label}. P2 = {self.A} must be between 0 and 1.')
+
+    def _calc_mode(self):
+        """Calculates modes of uniform bimodal distribution. See TGN for derivation"""
+        self.h1 = self.A/((self.r - self.l)*(self.p2 - self.p1)) # impulse height
+        try:
+            self.h2 = (1 - self.A) / ((self.r - self.l) * (1 - (self.p2 - self.p1)))  # background height
+        except ZeroDivisionError:
+            self.h2 = 0
+
+        self.m1 = self.l + self.p1*(self.r - self.l)
+        self.m2 = self.l + self.p2 * (self.r - self.l)
+
+    def calc_params(self):
+        self._calc_mode()
+
+    def sample(self, sample_size):
+        #Define quantile interpolation function
+        pts = np.array([[0, self.l], [self.h2*(self.m1 - self.l), self.m1],  [self.h2*(self.m1 - self.l) + self.A, self.m2],  [1, self.r]])
+        f = interp1d(pts[:, 0], pts[:, 1])
+        return f(self.rnd.uniform(0, 1, size=sample_size))
+
+    def draw(self):
+        l_lim = self.l - 0.2 * (self.r - self.l)
+        r_lim = self.r + 0.2 * (self.r - self.l)
+
+        return np.array(
+            [[l_lim, 0], [self.l, 0], [self.l, self.h2], [self.m1, self.h2], [self.m1, self.h1], [self.m2, self.h1],
+             [self.m2, self.h2],  [self.r, self.h2], [self.r, 0],  [r_lim, 0]])
+
+    def report_params(self):
+        return {'label': UniBiomodalDistr.label, 'm1': self.m1, 'm2': self.m2,  'h1': self.h1, 'h2': self.h2}
 
 class UniformDistr(GenericDistr):
     label = 'Uniform distribution'
@@ -356,7 +409,8 @@ class ProbControl:
         'user_def': UserDefDistr, #TODO
         'gumbel': GumbelDistr,
         'fixed_point': FixedPointDistr,
-        'normal': NormalDistr}
+        'normal': NormalDistr,
+        'rect_pulse': RectPulseDistr}
 
     def __init__(self, seed):
 
