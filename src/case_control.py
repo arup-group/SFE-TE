@@ -172,7 +172,7 @@ class AssessmentCase:
 
         if for_optimisation:
             optm_fxn = np.sqrt((self.lim_factor - target_temp) ** 2)  # used only for optimisation
-            print(f'Equiv: {equiv_exp}, Target temp: {target_temp}')
+            # print(f'Equiv: {equiv_exp}, Target temp: {target_temp}')
             if optm_fxn < self.max_optm_fxn[0]:
                 self.max_optm_fxn[0] = optm_fxn
                 try:
@@ -184,7 +184,7 @@ class AssessmentCase:
         else:
             self.outputs['thermal_response'].append(thermal_response)
             self.outputs['t_hist'] = thermal_hist
-            print(f'Equiv: {equiv_exp}, Reliability: {reliability}')
+            # print(f'Equiv: {equiv_exp}, Reliability: {reliability}')
 
     def _optimise_to_limiting_factor(self):
         self.max_optm_fxn = [10000]  # holder for a value of optimisation function
@@ -257,7 +257,7 @@ class AssessmentCase:
                     Quick analysis for case {self.ID}-{self.name} converged {'successfully' if self.outputs['success_conv'] else 'unsuccessfully'}.\n
                     Undertaken iterations: {self.optm_result.nfev}
                     Convergence error: {self.optm_result.fun:.2f}.\n
-                    Equivalent fire severity to {self.ht_model.ecr.label}: {self.outputs['eqv_req']:.0f} min.
+                    Converged to equivalent fire severity to {self.ht_model.ecr.label}: {self.outputs['eqv_req']:.0f} min.
                     Confidence interval for sample size of {self.sample_size}: {self.outputs['eqv_req_conf'][1]:.0f} to {self.outputs['eqv_req_conf'][0]:.0f} min.
                     Required minimum depth  of concrete cover: {self.outputs['eqv_conc_cover']:.0f} mm.\n
                     Total reliability: {100*self.risk_model.total_reliability:.2f} %.
@@ -483,7 +483,15 @@ class AssessmentCase:
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
-        pass
+        report = {'name': self.name,
+                  'ID': self.ID,
+                  'eqv_est': self.outputs['eqv_req'],
+                  'eqv_low': self.outputs['eqv_req_conf'][0],
+                  'eqv_high': self.outputs['eqv_req_conf'][1],
+                  'success_conv': self.outputs['success_conv'],
+                  'n_itr': self.optm_result.nfev,
+                  'itr_err': self.optm_result.fun}
+        return report
 
 class CaseControler:
 
@@ -492,6 +500,9 @@ class CaseControler:
         self.eqv_method = None
         self.mc_method = None
         self.cases = {}
+        self.case_reports = []
+        self.run_a_summary = None
+        self.run_b_summary = None
 
         self.out_f = out_f
         self.inputs = inputs
@@ -608,7 +619,8 @@ class CaseControler:
     def run_a_study(self):
         self._get_cases()
 
-        for case_ID in self.cases:
+        for i, case_ID in enumerate(self.cases):
+            print(f'{i+1}/{len(self.cases)}. Analysing case {self.cases[case_ID]["label"]}.')
             self.case = AssessmentCase(
                 name=self.cases[case_ID]['label'],
                 ID=case_ID,
@@ -622,9 +634,72 @@ class CaseControler:
                 sample_size=self.inputs['run_a_sample_size'],
                 bootstrap_rep=self.inputs['bootstrap_rep'])
             self.case.run_analysis()
-            print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
-            print(f'FINAL: {self.case.outputs["eqv_req"]}, conf: {self.case.outputs["eqv_req_conf"]}')
+            # print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
+            print(f'Analysis for {self.case.name} completed. Convergence status: {self.case.outputs["success_conv"]}')
+            print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, conf: {self.case.outputs["eqv_req_conf"].round(1)}\n')
+            self.case_reports.append(self.case.report_to_main())
 
+            if i == 100000:
+                break
+        self._summarise_run(which='run_a')
+        self._plot_summary_bars(which='run_a')
+
+    def _summarise_run(self, which):
+        """Creates summary datatable with case reports
+        Inputs:
+            which (str): Which run to summarise. Value should be either 'run_a' or 'run_b."""
+
+        data = pd.DataFrame(self.case_reports)
+        if which == 'run_a':
+            self.run_a_summary = data
+            data.copy().astype(str).to_csv(os.path.join(self.out_f, 'run_a', 'cases_summary.csv'), index=False)
+        elif which == 'run_b':
+            self.run_b_summary = data
+            data.copy().astype(str).to_csv(os.path.join(self.out_f, 'run_b', 'cases_summary.csv'), index=False)
+
+    def _plot_summary_bars(self, which):
+
+        if which == 'run_a':
+            save_loc = 'run_a'
+            data = self.run_a_summary
+        elif which == 'run_b':
+            save_loc = 'run_a'
+            data = self.run_b_summary
+
+        data = data.sort_values(by='eqv_est').reset_index()
+        err_low = np.absolute((data['eqv_est'] - data['eqv_low']).values)
+        err_high = np.absolute((data['eqv_est'] - data['eqv_high']).values)
+
+        sns.set()
+        fig, ax = plt.subplots(figsize=(10, 0.33 * len(data) + 3))
+        y_pos = data.index.values
+
+        idx_conv = data[data['success_conv']].index
+        idx_not_conv = data[~data['success_conv']].index
+
+        ax.barh(y_pos[idx_conv], data.loc[idx_conv, 'eqv_est'],
+                xerr=[err_low[idx_conv], err_high[idx_conv]], ecolor='black', capsize=4, alpha=0.3, )
+        ax.plot(data.loc[idx_conv, 'eqv_est'], y_pos[idx_conv], 'o', color='#4C72B0', alpha=0.9, label='Assessed case')
+        if len(idx_not_conv) != 0:
+            ax.barh(y_pos[idx_not_conv], data.loc[idx_not_conv, 'eqv_est'],
+                    xerr=[err_low[idx_not_conv], err_high[idx_not_conv]], ecolor='#DD8452', alpha=0.3, )
+            ax.plot(data.loc[idx_not_conv, 'eqv_est'], y_pos[idx_not_conv], 'o', color='#DD8452', alpha=0.9,
+                    label='Case did not converge')
+
+        ax.plot([], [], '-', color='black', alpha=0.9, label='95% confidence')
+        ax.set_yticks(y_pos)
+        start, end = ax.get_xlim()
+        start = ((data['eqv_est'].min() - 10) // 10) * 10
+        ax.set_xlim([start, end])
+        ax.set_xticks(np.arange(start, end, 5))
+        ax.set_yticklabels(data['ID'].astype(str) + '_' + data['name'])
+        ax.set_xlabel('Equivalent severity (min)')
+        plt.legend()
+
+        plt.savefig(os.path.join(self.out_f, save_loc, f'results_summary.png'),
+                    dpi=150,
+                    bbox_inches='tight')
+        plt.close(fig)
 
     def process_a_study_results(self):
         pass
