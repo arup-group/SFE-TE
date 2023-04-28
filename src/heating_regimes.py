@@ -107,6 +107,7 @@ class UniEC1(GenericRegime):
         self._calc_t_star_max()  # Calculates t star helping parameters
         self._calc_max_temp()  # calculates max temperature
         self._calc_fire_duration()  # Calculates burnout in [min]
+        self._define_max_gas_temp()
 
 
     def _calc_comp_sides(self):
@@ -212,6 +213,10 @@ class UniEC1(GenericRegime):
         UNIT TEST REQUIRED"""
         self.params['max_temp'] = self._calc_heat_phase_temp(self.params['t_str_max_heat'])
 
+    def _define_max_gas_temp(self):
+        """Defines the max gas temperature for this types of fire."""
+        self.params['max_gas_temp'] = self.params['max_temp']
+
     def _calc_cooling_phase_temp(self, t, sub_params):
         """Calculates cooling phase temperatures in accordance with BS EN 1991-1-2 Annex A (11)
 
@@ -314,11 +319,11 @@ class UniEC1(GenericRegime):
             col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac', 'remain_frac',
                         'A_v', 'Of_max', 'Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_max_vent', 't_lim', 't_max_fuel',
                         'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 't_str_max_heat', 't_str_max_cool_vent', 't_str_max_cool_fuel',
-                        'max_temp', 'burnout']
+                        'max_temp', 'burnout', 'max_gas_temp']
         elif param_list is 'concise':
             col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac',
                         'remain_frac','A_v','Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_lim',
-                        'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 'max_temp', 'burnout']
+                        'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 'max_temp', 'burnout', 'max_gas_temp']
         data = pd.DataFrame.from_dict({k: self.params[k] for k in col_list})
         data = data[col_list]
         data = data.set_index(np.array(self.relevent_df_indices).flatten())
@@ -427,6 +432,9 @@ class TravelingISO16733(GenericRegime):
         L_f = self.params['L_f'][~crit]
         self.params['T_nf'][~crit] = T_amb + (T_nf_max * (2*r_x1+L_f) - 2*T_amb*r_x2)/f + (32.28*(Q*A_f)**(2/3) * ((0.5*f)**(1/3) - r_x2**(1/3)))/(f*h_c)
 
+    def _define_max_gas_temperature(self):
+        self.params['max_gas_temp'] = self.params['T_nf']
+
     def _amend_long_duration_fires(self):
         """This method amends parameters for fires where the total duration is more than a user input treshold.
         Motivations for this is to reflect on the reasonable period for fire duration before intervention and improve
@@ -512,6 +520,7 @@ class TravelingISO16733(GenericRegime):
         self._calc_flap_l()
         self._calc_interim_parameters_for_near_field_temp()
         self._calc_average_near_field_temp()
+        self._define_max_gas_temperature()
 
     def summarise_parameters(self, param_list='concise'):
         """Returns all calculated parameters in human readable table format
@@ -521,10 +530,11 @@ class TravelingISO16733(GenericRegime):
 
         if param_list is 'full':
             col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'T_amb', 'flap_angle',
-                        't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'f', 'r_0', 'r_x1', 'r_x2', 'T_nf_max', 'T_nf', 'burnout']
+                        't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'f', 'r_0', 'r_x1', 'r_x2', 'T_nf_max', 'T_nf', 'burnout',
+                        'max_gas_temp']
         elif param_list is 'concise':
             col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'flap_angle',
-                        't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'T_nf_max', 'T_nf', 'burnout']
+                        't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'T_nf_max', 'T_nf', 'burnout', 'max_gas_temp']
         data = pd.DataFrame.from_dict({k: self.params[k] for k in col_list})
         data = data[col_list]
         data = data.set_index(np.array(self.relevent_df_indices).flatten())

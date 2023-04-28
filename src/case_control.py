@@ -104,10 +104,10 @@ class AssessmentCase:
         self.outputs['reliability_conf'] = np.percentile(boot_res, [2.5, 97.5], axis=0).T
 
         #calc confidence at target by interpolation
-        self.outputs['eqv_req_conf'] = [0, 0]
+        self.outputs['eqv_req_conf'] = np.array([0, 0], dtype='float')
         for i in range(2):
             f = interpolate.interp1d(self.outputs['reliability_conf'][:,i], self._eqv_assess_range)
-            self.outputs['eqv_req_conf'][i] = f(self.risk_model.risk_target)
+            self.outputs['eqv_req_conf'][i] = float(f(self.risk_model.risk_target))
 
     def _estimate_max_elem_response_at_eqv_req(self):
         if self.analysis_type == 'full':
@@ -162,7 +162,7 @@ class AssessmentCase:
         else:
             self.outputs['thermal_response'].append(thermal_response)
             self.outputs['t_hist'] = thermal_hist
-            # print(f'Equiv: {equiv_exp}, Reliability: {reliability}')
+            print(f'Equiv: {equiv_exp}, Reliability: {reliability}')
 
     def _optimise_to_limiting_factor(self):
         self.max_optm_fxn = [10000]  # holder for a value of optimisation function
@@ -176,7 +176,7 @@ class AssessmentCase:
     def _assess_full_eqv_range(self):
 
         self._eqv_assess_range = np.arange(5, self.ht_model.eqv_max, self.ht_model.eqv_step)
-        self._eqv_assess_range = np.append(self._eqv_assess_range, self.ht_model.eqv_step)
+        self._eqv_assess_range = np.append(self._eqv_assess_range, self.ht_model.eqv_max)
         for t_eqv in self._eqv_assess_range:
             self._assess_single_equiv(t_eqv, for_optimisation=False)
         self.outputs['thermal_response'] = np.array(self.outputs['thermal_response'])
@@ -345,13 +345,62 @@ class AssessmentCase:
                     bbox_inches='tight')
         plt.close(fig)
 
-
     def _plot_max_el_temp_duration(self):
 
         mrk_lst = ['o', '^', 's', '+']
         N_max = 500  # maximum points for legibility
         vmin = 0
         vmax = np.percentile(self.outputs['fire_eqv'], 97.5)  # autoscale the colormap to the first 95%
+
+        sns.set()
+        fig, axs = plt.subplots(1, 2, figsize=(20, 6))
+        axs = axs.ravel()
+
+        begin = 0
+        for i, regime in enumerate(self.heating_regimes):
+
+            if regime.is_empty: continue  # skip empty methodologies
+
+            red_sample = int(len(regime.params['burnout']) / self.sample_size * N_max)
+            sampl_ind = np.random.choice(range(len(regime.params['burnout'])), red_sample, replace=False)
+            x = regime.params['burnout']
+            y1 = regime.params['max_gas_temp']
+            y2 = self.outputs['max_el_resp'][begin:begin + len(x)]
+            col = self.outputs['fire_eqv'][begin:begin + len(x)]
+            axs[0].scatter(x[sampl_ind], y1[sampl_ind], c=col[sampl_ind], marker=mrk_lst[i], cmap='coolwarm',
+                           vmin=vmin, vmax=vmax, label=regime.NAME, alpha=0.7)
+            _ = axs[1].scatter(x[sampl_ind], y2[sampl_ind], c=col[sampl_ind], marker=mrk_lst[i], cmap='coolwarm',
+                           vmin=vmin, vmax=vmax, label=regime.NAME, alpha=0.7)
+            begin = len(x)
+
+        axs[1].hlines(y=self.lim_factor, xmin=0, xmax=axs[1].get_xlim()[1], color='red', linestyle='dashed', label='Limiting temperature')
+        axs[1].set_ylim([0, axs[1].get_ylim()[1] + 200])
+        axs[1].set_xlim([0, axs[1].get_xlim()[1]])
+        axs[1].set_xlabel('Fire duration (min)')
+        axs[1].set_ylabel('Maximum element temperature (°C)')
+        axs[1].set_yticks(np.arange(axs[1].get_ylim()[0], axs[1].get_ylim()[1], 100))
+        axs[1].set_xticks(np.arange(axs[1].get_xlim()[0], axs[1].get_xlim()[1], 100))
+        axs[1].legend()
+        axs[0].set_ylim([0, axs[0].get_ylim()[1] + 200])
+        axs[0].set_xlim([0, axs[0].get_xlim()[1]])
+        axs[0].set_xlabel('Fire duration (min)')
+        axs[0].set_ylabel('Maximum gas temperature (°C)')
+        axs[0].set_yticks(np.arange(axs[0].get_ylim()[0], axs[0].get_ylim()[1], 100))
+        axs[0].set_xticks(np.arange(axs[0].get_xlim()[0], axs[0].get_xlim()[1], 100))
+        axs[0].legend()
+        cb = fig.colorbar(_, extend='max')
+        cb.set_label('Fire severity (min)')
+        plt.savefig(os.path.join(self.save_loc, f'{self.ID}_duration_response.png'),
+                    dpi=150,
+                    bbox_inches='tight')
+        plt.close(fig)
+
+    def _plot_max_el_temp_duration_quick(self):
+
+        mrk_lst = ['o', '^', 's', '+']
+        N_max = 600  # maximum points for legibility
+        vmin = np.percentile(self.outputs['max_el_resp'], 2.5)
+        vmax = np.percentile(self.outputs['max_el_resp'], 97.5)  # autoscale the colormap to the first 95%
 
         sns.set()
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -364,22 +413,39 @@ class AssessmentCase:
             red_sample = int(len(regime.params['burnout']) / self.sample_size * N_max)
             sampl_ind = np.random.choice(range(len(regime.params['burnout'])), red_sample, replace=False)
             x = regime.params['burnout']
-            y = self.outputs['max_el_resp'][begin:begin + len(x)]
-            col = self.outputs['fire_eqv'][begin:begin + len(x)]
-            _ = ax.scatter(x[sampl_ind], y[sampl_ind], c=col[sampl_ind], marker=mrk_lst[i], cmap='coolwarm',
-                           vmin=vmin, vmax=vmax, label=regime.NAME, alpha=0.7)
+            y1 = regime.params['max_gas_temp']
+            col = self.outputs['max_el_resp'].reshape(-1)[begin:begin + len(x)]
+            design_mask = (col < self.lim_factor + 5) & (col > self.lim_factor - 5)
+
+            tmp_mask = np.zeros(design_mask.size, dtype=bool)
+            tmp_mask[sampl_ind] = True
+            design_mask[~tmp_mask] = False
+
+            x_s, y_s, col_s = x[sampl_ind], y1[sampl_ind], col[sampl_ind]
+            pass_mask = col_s <= self.lim_factor
+            ax.scatter(x_s[pass_mask], y_s[pass_mask], s=20, c='#4C72B0', marker=mrk_lst[i], alpha=0.6)
+            ax.scatter(x_s[~pass_mask], y_s[~pass_mask], s=20, c='#DD8452', marker=mrk_lst[i], alpha=0.6)
+
+            # _ = ax.scatter(x[sampl_ind], y1[sampl_ind], c=col[sampl_ind], marker=mrk_lst[i], cmap='coolwarm',
+            #                vmin=vmin, vmax=vmax, label=regime.NAME, alpha=0.7)
+            ax.scatter(x[design_mask], y1[design_mask], s=40, facecolors='none', edgecolors='black', marker='o', alpha=0.4)
+            ax.scatter([], [], c='black', marker=mrk_lst[i], alpha=0.5, label=regime.NAME)
             begin = len(x)
 
-        ax.hlines(y=self.lim_factor, xmin=0, xmax=ax.get_xlim()[1], color='red', linestyle='dashed', label='Limiting temperature')
-        ax.legend()
+        ax.scatter([], [], facecolors='none', edgecolors='black', marker='o', alpha=0.5, label='Fires near risk target')
+        ax.scatter([], [], c='#4C72B0', marker='s', alpha=0.5, label='Less severe than risk target')
+        ax.scatter([], [], c='#DD8452', marker='s', alpha=0.5, label='More severe than risk target')
+
         ax.set_ylim([0, ax.get_ylim()[1] + 200])
         ax.set_xlim([0, ax.get_xlim()[1]])
         ax.set_xlabel('Fire duration (min)')
-        ax.set_ylabel('Element maximum temperature (°C)')
+        ax.set_ylabel('Maximum gas temperature (°C)')
         ax.set_yticks(np.arange(ax.get_ylim()[0], ax.get_ylim()[1], 100))
         ax.set_xticks(np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 100))
-        cb = fig.colorbar(_, extend='max')
-        cb.set_label('Fire severity (min)')
+        ax.legend()
+        # cb = fig.colorbar(_, extend='both')
+        # cb.set_label('Maximum element temperature (°C)')
+        # cb.ax.plot([0, 3000], [self.lim_factor]*2, 'black', alpha=0.4)
         plt.savefig(os.path.join(self.save_loc, f'{self.ID}_duration_response.png'),
                     dpi=150,
                     bbox_inches='tight')
@@ -422,6 +488,7 @@ class AssessmentCase:
             list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max', 'T_amb'],
             filename='fire_params')
         self._plot_convergence_study()
+        self._plot_max_el_temp_duration_quick()
 
         self._save_design_fires_data()
         self._save_reliability_curve()
@@ -461,14 +528,23 @@ class AssessmentCase:
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
-        report = {'name': self.name,
-                  'ID': self.ID,
-                  'eqv_est': self.outputs['eqv_req'],
-                  'eqv_low': self.outputs['eqv_req_conf'][0],
-                  'eqv_high': self.outputs['eqv_req_conf'][1],
-                  'success_conv': self.outputs['success_conv'],
-                  'n_itr': self.optm_result.nfev,
-                  'itr_err': self.optm_result.fun}
+        if self.analysis_type is 'quick':
+            report = {'name': self.name,
+                      'ID': self.ID,
+                      'eqv_est': self.outputs['eqv_req'],
+                      'eqv_low': self.outputs['eqv_req_conf'][0],
+                      'eqv_high': self.outputs['eqv_req_conf'][1],
+                      'success_conv': self.outputs['success_conv'],
+                      'n_itr': self.optm_result.nfev,
+                      'itr_err': self.optm_result.fun}
+        elif self.analysis_type is 'full':
+            report = {'name': self.name,
+                      'ID': self.ID,
+                      'eqv_est': self.outputs['eqv_req'],
+                      'eqv_low': self.outputs['eqv_req_conf'][0],
+                      'eqv_high': self.outputs['eqv_req_conf'][1],
+                      'success_conv': True}
+
         return report
 
 class CaseControler:
@@ -596,7 +672,6 @@ class CaseControler:
 
     def run_a_study(self):
         self._get_cases()
-
         for i, case_ID in enumerate(self.cases):
             print(f'{i+1}/{len(self.cases)}. Analysing case {self.cases[case_ID]["label"]}.')
             self.case = AssessmentCase(
@@ -612,13 +687,13 @@ class CaseControler:
                 sample_size=self.inputs['run_a_sample_size'],
                 bootstrap_rep=self.inputs['bootstrap_rep'])
             self.case.run_analysis()
-            # print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
+            print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
             print(f'Analysis for {self.case.name} completed. Convergence status: {self.case.outputs["success_conv"]}')
             print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, conf: {self.case.outputs["eqv_req_conf"].round(1)}\n')
             self.case_reports.append(self.case.report_to_main())
-
-            if i == 100000:
+            if i == 1000:
                 break
+
         self._summarise_run(which='run_a')
         self._plot_summary_bars(which='run_a')
 
