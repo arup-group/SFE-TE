@@ -605,6 +605,7 @@ class CaseControler:
         self.risk_method.assess_risk_target()
         # calculate eqv_protection
         self.eqv_method.get_equivalent_protection()
+        self.eqv_method.report_eqv_data(save_loc=self.out_f)
         #TODO plot equivalent protection
 
     def _get_cases(self):

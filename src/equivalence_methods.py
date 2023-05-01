@@ -1,10 +1,10 @@
-try:
-    import equivalent_curves as ecr
-except ModuleNotFoundError:
-    import src.equivalent_curves as ecr
 import configs as cfg
-import numpy as np
 from scipy.interpolate import interp1d
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
 
 class GenericHT():
     """Generic class for heat transfer analysis"""
@@ -27,7 +27,7 @@ class GenericHT():
     def _process_sample_section_geometry(self, sect_prop):
         raise NotImplementedError
 
-    def get_equivelant_protection(self):
+    def get_equivalent_protection(self):
         raise NotImplementedError
 
     def plot_equivelant_protection_curve(self):
@@ -171,6 +171,26 @@ class SteelEC3(GenericHT):
             fill_value='extrapolate')
 
         return debug_results
+
+    def report_eqv_data(self, save_loc):
+        """Plots equivalent protection curve and saves a csv of supporting data
+        Inputs:
+            where (str): save location
+        """
+        data = pd.DataFrame(self.equiv_prot_req_data, columns=['Prot. thickness', f'{self.ecr.label} exposure'])
+        data['Prot. thickness'] = 1000*data['Prot. thickness']
+        sns.set()
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(data[f'{self.ecr.label} exposure'], data['Prot. thickness'])
+        ax.set_xlabel(f'Exposure to {self.ecr.label} (min)')
+        ax.set_ylabel(f'Protection thickness to  {self.T_lim} °C lim. temperature (mm)')
+
+        data.to_csv(os.path.join(save_loc, 'eqv', 'eqv_data.csv'), index=False)
+        plt.savefig(os.path.join(save_loc, 'eqv', 'eqv_data.png'),
+                    dpi=150,
+                    bbox_inches='tight')
+        plt.close(fig)
+
 
     def calc_thermal_response(self, equiv_exp, exposure_fxn, t_final, sample_size, output_history, early_stop):
         """Calculates the thermal response of the sample section against an array of design fires representative
