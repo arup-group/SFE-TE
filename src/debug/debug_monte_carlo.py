@@ -20,12 +20,12 @@ def simple_plot(inputs):
 
 
 # Inputs
-inputs = {'spr_rate1': ['rect_pulse', 0, 10, 0, 0.33, 0.2, None, None],
+inputs = {'spr_rate1': ['gumbel', None, None, 795, 100, None, None, None],
           'spr_rate2': ['rect_pulse', 0, 10, 0.33, 0.66, 0.33, None, None],
           'spr_rate3': ['rect_pulse', 0, 10, 0.66, 1, 0.2, None, None]}
 
 rnd = mc.ProbControl(seed=None)
-asd = rnd.sample_inputs(inputs=inputs, sample_size=2000)
+asd = rnd.sample_inputs(inputs=inputs, sample_size=10000)
 simple_plot(asd)
 
 print('asd')

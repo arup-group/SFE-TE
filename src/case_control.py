@@ -139,13 +139,13 @@ class AssessmentCase:
                 t_final=np.max(regime.params['burnout']),
                 sample_size=len(regime.params['burnout']),
                 output_history=False,  # set to default. Use True only for debugging
-                early_stop=20)
+                early_stop=20) #TODO to be input as configuration parameter
             thermal_response.append(T_max)
             thermal_hist.append(T_hist)
 
         thermal_response = np.concatenate(thermal_response)
         target_temp = np.percentile(thermal_response, 100 * self.risk_model.risk_target)
-        reliability = np.sum(thermal_response < self.lim_factor)/len(thermal_response) #TODO Check this formula
+        reliability = np.sum(thermal_response < self.lim_factor)/len(thermal_response)
         self.outputs['reliability_curve'].append([equiv_exp, target_temp, reliability])
 
         if for_optimisation:
@@ -558,6 +558,7 @@ class CaseControler:
         self.run_a_summary = None
         self.run_b_summary = None
 
+        self.study_name = inputs['study_name']
         self.out_f = out_f
         self.inputs = inputs
         self._setup_folder_structure()
@@ -580,6 +581,9 @@ class CaseControler:
             json.dump(self.inputs, f, indent=4)
 
     def _setup_folder_structure(self):
+
+        os.makedirs(os.path.join(self.out_f, self.study_name), exist_ok=True)
+        self.out_f = os.path.join(self.out_f, self.study_name)
         subfolders = ['info', 'run_a', 'run_b', 'eqv']
         for subf in subfolders:
             os.makedirs(os.path.join(self.out_f, subf), exist_ok=True)
@@ -634,7 +638,7 @@ class CaseControler:
             for i in range(min([len(k) for k in tmp_list_inputs])):
                 case = [value[i] for value in tmp_list_inputs]
                 self.cases[f'{(i + 1):03d}'] = {
-                    'label': f'input_{i+1}',
+                    'label': f'scenario_{i+1}',
                     'params': {label: case for (label, case) in zip(self.inputs['parameters'], case)}}
 
     @staticmethod
@@ -684,7 +688,7 @@ class CaseControler:
                 ht_model=self.eqv_method,
                 heating_regimes_inputs=self.inputs['heating_regimes'],
                 save_loc=os.path.join(self.out_f, 'run_a'),
-                analysis_type='quick',
+                analysis_type=self.inputs['run_a_setup'],
                 sample_size=self.inputs['run_a_sample_size'],
                 bootstrap_rep=self.inputs['bootstrap_rep'])
             self.case.run_analysis()
@@ -694,9 +698,10 @@ class CaseControler:
             self.case_reports.append(self.case.report_to_main())
             if i == 1000:
                 break
-
         self._summarise_run(which='run_a')
         self._plot_summary_bars(which='run_a')
+        if self.inputs['run_a_setup'] == 'full':
+            self._plot_reliability_curves_summary(which='run_a')
 
     def _summarise_run(self, which):
         """Creates summary datatable with case reports
@@ -751,6 +756,39 @@ class CaseControler:
         plt.legend()
 
         plt.savefig(os.path.join(self.out_f, save_loc, f'results_summary.png'),
+                    dpi=150,
+                    bbox_inches='tight')
+        plt.close(fig)
+
+    def _plot_reliability_curves_summary(self, which):
+
+        if which == 'run_a':
+            summary_data = self.run_a_summary
+            save_loc = 'run_a'
+        elif which == 'run_b':
+            summary_data = self.run_b_summary
+            save_loc = 'run_b'
+
+        sns.set()
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        for i in range(len(summary_data)):
+            label = f'{summary_data.loc[i, "ID"]}_{summary_data.loc[i, "name"]}'
+            data = pd.read_csv(os.path.join(self.out_f, save_loc, label, 'data',
+                                            f'{summary_data.loc[i, "ID"]}_reliability_curve.csv'))
+            _ = ax.plot(data['fire_severity'], data['ecdf'], label=label)
+            ax.fill_between(data['fire_severity'], data['ecdf_low'], data['ecdf_high'], color=_[0].get_color(),
+                            alpha=0.2)
+
+        ax.hlines(y=self.risk_method.risk_target, xmin=0, xmax=300, color='red', linestyle='dashed', label='Reliability target')
+        ax.set_ylim([0, 1.1])
+        ax.set_xlim([0, 180])
+        ax.set_xticks(np.arange(0, 181, 10))
+        ax.set_yticks(np.arange(0, 1.1, 0.1))
+        ax.set_xlabel('Equivalent fire severity rating (min)')
+        ax.set_ylabel('Structural reliability')
+        ax.legend()
+        plt.savefig(os.path.join(self.out_f, save_loc, f'reliability_curves_summary.png'),
                     dpi=150,
                     bbox_inches='tight')
         plt.close(fig)
