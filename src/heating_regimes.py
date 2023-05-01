@@ -52,7 +52,7 @@ class GenericRegime:
 
 class UniEC1(GenericRegime):
 
-    REQUIRED_PARAMS = ['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'q_f_d', 't_lim', 'fabr_inrt']
+    REQUIRED_PARAMS = ['A_c', 'c_ratio', 'h_c', 'w_frac', 'w_frac_h', 'remain_frac', 'q_f_d', 't_lim', 'fabr_inrt']
     NAME = 'Uniform BS EN 1991-1-2'
     SAVE_NAME = 'uni_bs_en_1991_1_2'
     DESCRIPTION = 'Some description'
@@ -91,6 +91,7 @@ class UniEC1(GenericRegime):
         self._calc_comp_sides()
         self._calc_perimeter()
         self._calc_total_area_enclosure()  # calc At
+        self._calc_average_window_height()  # calc h_w_eq
         self._calc_total_ventilation_area()  # calc Av
         self._calc_max_open_factor()  # calc Of_max
         self._calc_open_factor_breakage()  # calc Of
@@ -122,6 +123,9 @@ class UniEC1(GenericRegime):
     def _calc_total_area_enclosure(self):
         """UNITE TEST REQUIRED"""
         self.params['A_t'] = 2*self.params['A_c'] + self.params['c_perim']*self.params['h_c']
+
+    def _calc_average_window_height(self):
+        self.params['h_w_eq'] = self.params['h_c'] * self.params['w_frac_h']
 
     def _calc_total_ventilation_area(self):
         """UNIT TEST REQUIRED"""
@@ -316,12 +320,12 @@ class UniEC1(GenericRegime):
              default is concise."""
 
         if param_list is 'full':
-            col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac', 'remain_frac',
+            col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'w_frac_h', 'c_perim', 'A_t', 'h_w_eq', 'w_frac', 'remain_frac',
                         'A_v', 'Of_max', 'Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_max_vent', 't_lim', 't_max_fuel',
                         'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 't_str_max_heat', 't_str_max_cool_vent', 't_str_max_cool_fuel',
                         'max_temp', 'burnout', 'max_gas_temp']
         elif param_list is 'concise':
-            col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'c_perim', 'A_t', 'h_w_eq', 'w_frac',
+            col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'w_frac_h','c_perim', 'A_t', 'h_w_eq', 'w_frac',
                         'remain_frac','A_v','Of', 'fabr_inrt', 'GA', 'q_f_d', 'q_t_d', 't_lim',
                         'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 'max_temp', 'burnout', 'max_gas_temp']
         data = pd.DataFrame.from_dict({k: self.params[k] for k in col_list})

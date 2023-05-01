@@ -482,7 +482,7 @@ class AssessmentCase:
         self._estimate_max_elem_response_at_eqv_req()
 
         self._plot_inputs(
-            list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
+            list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'w_frac_h', 'remain_frac', 'fabr_inrt'],
             filename='geometry_params')
         self._plot_inputs(
             list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max', 'T_amb'],
@@ -506,7 +506,7 @@ class AssessmentCase:
         self.risk_model.risk_sensitivity_study(analysis_case=self)
 
         self._plot_inputs(
-            list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'h_w_eq', 'remain_frac', 'fabr_inrt'],
+            list_of_inputs=['A_c', 'c_ratio', 'h_c', 'w_frac', 'w_frac_h', 'remain_frac', 'fabr_inrt'],
             filename='geometry_params')
         self._plot_inputs(
             list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max', 'T_amb'],

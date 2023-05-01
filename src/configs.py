@@ -8,7 +8,7 @@ UNIT_CATALOGUE = {
     'c_ratio': {'ui_label': 'csr', 'title': 'Compartment sides ratio', 'unit': '-'},
     'h_c': {'ui_label': 'ch', 'title': 'Compartment height', 'unit': 'm'},
     'w_frac': {'ui_label': 'vpr', 'title': 'Ventilated perimeter fraction', 'unit': '-'},
-    'h_w_eq': {'ui_label': 'heq', 'title': 'Average window height', 'unit': 'm'},
+    'w_frac_h': {'ui_label': 'heq', 'title': 'Compartment height window height fraction', 'unit': '-'},
     'remain_frac': {'ui_label': 'trf', 'title': 'Thermal resilience', 'unit': '-'},
     'fabr_inrt': {'ui_label': 'ftr', 'title': 'Fabric thermal inertia', 'unit': 'J/m$^2$s$^{1/2}$K'},
     'q_f_d': {'ui_label': 'fl', 'title': 'Fuel load', 'unit': 'MJ/m$^2$'},
