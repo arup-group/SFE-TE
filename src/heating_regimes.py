@@ -331,6 +331,12 @@ class UniEC1(GenericRegime):
         data = pd.DataFrame.from_dict({k: self.params[k] for k in col_list})
         data = data[col_list]
         data = data.set_index(np.array(self.relevent_df_indices).flatten())
+        # Record amended fires:
+        for k in self.amended_df_indices:
+            data[k] = 0
+            data.loc[self.amended_df_indices[k], k] = 1
+        return data
+
         return data
 
     def check_bad_samples(self):
@@ -542,6 +548,10 @@ class TravelingISO16733(GenericRegime):
         data = pd.DataFrame.from_dict({k: self.params[k] for k in col_list})
         data = data[col_list]
         data = data.set_index(np.array(self.relevent_df_indices).flatten())
+        # Record amended fires:
+        for k in self.amended_df_indices:
+            data[k] = 0
+            data.loc[self.amended_df_indices[k], k] = 1
         return data
 
     def check_bad_samples(self):
