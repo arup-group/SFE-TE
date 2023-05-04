@@ -578,14 +578,14 @@ class AssessmentCase:
 
     def run_analysis(self):
         """Starts analysis"""
-        if self.analysis_type is 'quick':
+        if self.analysis_type == 'quick':
             self._quick_analysis()
-        elif self.analysis_type is 'full':
+        elif self.analysis_type == 'full':
             self._full_analysis()
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
-        if self.analysis_type is 'quick':
+        if self.analysis_type == 'quick':
             report = {'name': self.name,
                       'ID': self.ID,
                       'eqv_est': self.outputs['eqv_req'],
@@ -594,7 +594,7 @@ class AssessmentCase:
                       'success_conv': self.outputs['success_conv'],
                       'n_itr': self.optm_result.nfev,
                       'itr_err': self.optm_result.fun}
-        elif self.analysis_type is 'full':
+        elif self.analysis_type == 'full':
             report = {'name': self.name,
                       'ID': self.ID,
                       'eqv_est': self.outputs['eqv_req'],
@@ -767,7 +767,7 @@ class CaseControler:
             print(f'Analysis for {self.case.name} completed. Convergence status: {self.case.outputs["success_conv"]}')
             print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, conf: {self.case.outputs["eqv_req_conf"].round(1)}\n')
             self.case_reports.append(self.case.report_to_main())
-            if i == 1000:
+            if i == 0:
                 break
         self._summarise_run(which='run_a')
         self._plot_summary_bars(which='run_a')
