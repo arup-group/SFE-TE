@@ -453,7 +453,6 @@ class TravelingISO16733(GenericRegime):
 
         crit = self.params['burnout'] > self.max_fire_duration
         self.amended_df_indices['long_duration'] = self.relevent_df_indices[np.where(crit)[0]] # saved the indices of the amended
-        print(f'{sum(crit)} amended design fires with duration greater than {self.max_fire_duration} min.')
 
         #Estimate required c_long toachieve maximum burnout time
         self.params['c_long'][crit] = 60*0.001*self.max_fire_duration*self.params['spr_rate'][crit] - self.params['L_f'][crit]

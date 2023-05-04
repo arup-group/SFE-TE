@@ -673,6 +673,7 @@ class CaseControler:
             equivalent_curve=eqv_curve, **m_config)
         # Setup mc method
         self.mc_method = mc.ProbControl(seed=self.inputs['random_seed'])
+        print('Analysis methods initiated correctly.\n')
 
     def conduct_pre_run_calculations(self):
         # calculate risk target
@@ -680,7 +681,8 @@ class CaseControler:
         # calculate eqv_protection
         self.eqv_method.get_equivalent_protection()
         self.eqv_method.report_eqv_data(save_loc=self.out_f)
-        #TODO plot equivalent protection
+        print('Pre analysis calculations completed successfully.\n')
+
 
     def _get_cases(self):
 
@@ -748,8 +750,11 @@ class CaseControler:
     def run_a_study(self):
         self._get_cases()
         self.case_reports = []
+
+        print(f'Commencing study A comprising of {len(self.cases)} cases.\n')
+
         for i, case_ID in enumerate(self.cases):
-            print(f'{i+1}/{len(self.cases)}. Analysing case {self.cases[case_ID]["label"]}.')
+            print(f'{i+1}/{len(self.cases)}. Analysing case {case_ID}_{self.cases[case_ID]["label"]}.')
             self.case = AssessmentCase(
                 name=self.cases[case_ID]['label'],
                 ID=case_ID,
@@ -762,12 +767,12 @@ class CaseControler:
                 analysis_type=self.inputs['run_a_setup'],
                 sample_size=self.inputs['run_a_sample_size'],
                 bootstrap_rep=self.inputs['bootstrap_rep'])
-            self.case.run_analysis()
             print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
+            self.case.run_analysis()
             print(f'Analysis for {self.case.name} completed. Convergence status: {self.case.outputs["success_conv"]}')
             print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, conf: {self.case.outputs["eqv_req_conf"].round(1)}\n')
             self.case_reports.append(self.case.report_to_main())
-            if i == 0:
+            if i == 5:
                 break
         self._summarise_run(which='run_a')
         self._plot_summary_bars(which='run_a')
@@ -875,11 +880,16 @@ class CaseControler:
 
 
     def run_b_study(self):
+
+        if self.inputs['run_b_setup'] == 'no':
+            print('Study B not required')
+            return
+
         self._select_run_b_cases()
-        print(f'Starting B analysis for cases {self.selected_b_cases}')
+        print(f'Commencing detailed study B analysis for cases {self.selected_b_cases}\n')
         self.case_reports = []
         for i, case_ID in enumerate(self.selected_b_cases):
-            print(f'{i + 1}/{len(self.cases)}. Analysing case {self.cases[case_ID]["label"]}b.')
+            print(f'{i + 1}/{len(self.selected_b_cases)}. Analysing case {case_ID}b_{self.cases[case_ID]["label"]}.')
             self.case = AssessmentCase(
                 name=self.cases[case_ID]['label'],
                 ID=f'{case_ID}b',
