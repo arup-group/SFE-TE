@@ -367,12 +367,25 @@ class AssessmentCase:
             y1 = regime.params['max_gas_temp']
             y2 = self.outputs['max_el_resp'][begin:begin + len(x)]
             col = self.outputs['fire_eqv'][begin:begin + len(x)]
+
+            # Get mask of fires near risk target
+            design_mask = (col < self.outputs['eqv_req'] + 2) & (col > self.outputs['eqv_req'] - 2)
+            tmp_mask = np.zeros(design_mask.size, dtype=bool)
+            tmp_mask[sampl_ind] = True
+            design_mask[~tmp_mask] = False
+
             axs[0].scatter(x[sampl_ind], y1[sampl_ind], c=col[sampl_ind], marker=mrk_lst[i], cmap='coolwarm',
                            vmin=vmin, vmax=vmax, label=regime.NAME, alpha=0.7)
+            axs[0].scatter(x[design_mask], y1[design_mask], s=40, facecolors='none', edgecolors='black', marker='o',
+                       alpha=0.4)
             _ = axs[1].scatter(x[sampl_ind], y2[sampl_ind], c=col[sampl_ind], marker=mrk_lst[i], cmap='coolwarm',
                            vmin=vmin, vmax=vmax, label=regime.NAME, alpha=0.7)
+            axs[1].scatter(x[design_mask], y2[design_mask], s=40, facecolors='none', edgecolors='black', marker='o',
+                           alpha=0.4)
             begin = len(x)
 
+        axs[1].scatter([], [], facecolors='none', edgecolors='black', marker='o', alpha=0.5,
+                       label='Fires near risk target')
         axs[1].hlines(y=self.lim_factor, xmin=0, xmax=axs[1].get_xlim()[1], color='red', linestyle='dashed', label='Limiting temperature')
         axs[1].set_ylim([0, axs[1].get_ylim()[1] + 200])
         axs[1].set_xlim([0, axs[1].get_xlim()[1]])
@@ -381,6 +394,8 @@ class AssessmentCase:
         axs[1].set_yticks(np.arange(axs[1].get_ylim()[0], axs[1].get_ylim()[1], 100))
         axs[1].set_xticks(np.arange(axs[1].get_xlim()[0], axs[1].get_xlim()[1], 100))
         axs[1].legend()
+        axs[0].scatter([], [], facecolors='none', edgecolors='black', marker='o', alpha=0.5,
+                       label='Fires near risk target')
         axs[0].set_ylim([0, axs[0].get_ylim()[1] + 200])
         axs[0].set_xlim([0, axs[0].get_xlim()[1]])
         axs[0].set_xlabel('Fire duration (min)')
@@ -390,6 +405,7 @@ class AssessmentCase:
         axs[0].legend()
         cb = fig.colorbar(_, extend='max')
         cb.set_label('Fire severity (min)')
+        cb.ax.plot([0, 3000], [float(self.outputs['eqv_req'])]*2, 'black', alpha=0.4)
         plt.savefig(os.path.join(self.save_loc, f'{self.ID}_duration_response.png'),
                     dpi=150,
                     bbox_inches='tight')
@@ -426,8 +442,6 @@ class AssessmentCase:
             ax.scatter(x_s[pass_mask], y_s[pass_mask], s=20, c='#4C72B0', marker=mrk_lst[i], alpha=0.6)
             ax.scatter(x_s[~pass_mask], y_s[~pass_mask], s=20, c='#DD8452', marker=mrk_lst[i], alpha=0.6)
 
-            # _ = ax.scatter(x[sampl_ind], y1[sampl_ind], c=col[sampl_ind], marker=mrk_lst[i], cmap='coolwarm',
-            #                vmin=vmin, vmax=vmax, label=regime.NAME, alpha=0.7)
             ax.scatter(x[design_mask], y1[design_mask], s=40, facecolors='none', edgecolors='black', marker='o', alpha=0.4)
             ax.scatter([], [], c='black', marker=mrk_lst[i], alpha=0.5, label=regime.NAME)
             begin = len(x)
@@ -443,9 +457,7 @@ class AssessmentCase:
         ax.set_yticks(np.arange(ax.get_ylim()[0], ax.get_ylim()[1], 100))
         ax.set_xticks(np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 100))
         ax.legend()
-        # cb = fig.colorbar(_, extend='both')
-        # cb.set_label('Maximum element temperature (°C)')
-        # cb.ax.plot([0, 3000], [self.lim_factor]*2, 'black', alpha=0.4)
+
         plt.savefig(os.path.join(self.save_loc, f'{self.ID}_duration_response.png'),
                     dpi=150,
                     bbox_inches='tight')
@@ -554,6 +566,7 @@ class CaseControler:
         self.eqv_method = None
         self.mc_method = None
         self.cases = {}
+        self.selected_b_cases = None
         self.case_reports = []
         self.run_a_summary = None
         self.run_b_summary = None
@@ -677,6 +690,7 @@ class CaseControler:
 
     def run_a_study(self):
         self._get_cases()
+        self.case_reports = []
         for i, case_ID in enumerate(self.cases):
             print(f'{i+1}/{len(self.cases)}. Analysing case {self.cases[case_ID]["label"]}.')
             self.case = AssessmentCase(
@@ -709,12 +723,13 @@ class CaseControler:
             which (str): Which run to summarise. Value should be either 'run_a' or 'run_b."""
 
         data = pd.DataFrame(self.case_reports)
+        data['eqv_est'] = data['eqv_est'].astype('float')
         if which == 'run_a':
             self.run_a_summary = data
-            data.copy().astype(str).to_csv(os.path.join(self.out_f, 'run_a', 'cases_summary.csv'), index=False)
+            data.copy().astype(str).to_csv(os.path.join(self.out_f, 'run_a', 'run_a_cases_summary.csv'), index=False)
         elif which == 'run_b':
             self.run_b_summary = data
-            data.copy().astype(str).to_csv(os.path.join(self.out_f, 'run_b', 'cases_summary.csv'), index=False)
+            data.copy().astype(str).to_csv(os.path.join(self.out_f, 'run_b', 'run_b_cases_summary.csv'), index=False)
 
     def _plot_summary_bars(self, which):
 
@@ -722,7 +737,7 @@ class CaseControler:
             save_loc = 'run_a'
             data = self.run_a_summary
         elif which == 'run_b':
-            save_loc = 'run_a'
+            save_loc = 'run_b'
             data = self.run_b_summary
 
         data = data.sort_values(by='eqv_est').reset_index()
@@ -793,9 +808,43 @@ class CaseControler:
                     bbox_inches='tight')
         plt.close(fig)
 
-    def process_a_study_results(self):
-        pass
+    def _select_run_b_cases(self):
+        """Gets max, min and median case"""
+        min_case = self.run_a_summary.loc[self.run_a_summary['eqv_est'].idxmin(), 'ID']
+        max_case = self.run_a_summary.loc[self.run_a_summary['eqv_est'].idxmax(), 'ID']
+        tmp_data = self.run_a_summary[self.run_a_summary['eqv_est'] >= self.run_a_summary['eqv_est'].median()]
+        med_case = tmp_data.loc[tmp_data['eqv_est'].idxmin(), 'ID']
+        self.selected_b_cases = [min_case, med_case, max_case]
+
 
     def run_b_study(self):
-        pass
+        self._select_run_b_cases()
+        print(f'Starting B analysis for cases {self.selected_b_cases}')
+        self.case_reports = []
+        for i, case_ID in enumerate(self.selected_b_cases):
+            print(f'{i + 1}/{len(self.cases)}. Analysing case {self.cases[case_ID]["label"]}b.')
+            self.case = AssessmentCase(
+                name=self.cases[case_ID]['label'],
+                ID=f'{case_ID}b',
+                input_defs=self.cases[case_ID]['params'],
+                risk_model=self.risk_method,
+                mc_engine=self.mc_method,
+                ht_model=self.eqv_method,
+                heating_regimes_inputs=self.inputs['heating_regimes'],
+                save_loc=os.path.join(self.out_f, 'run_b'),
+                analysis_type=self.inputs['run_b_setup'],
+                sample_size=self.inputs['run_b_sample_size'],
+                bootstrap_rep=self.inputs['bootstrap_rep'])
+            self.case.run_analysis()
+            print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
+            print(f'Analysis for {self.case.name} completed. Convergence status: {self.case.outputs["success_conv"]}')
+            print(
+                f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, conf: {self.case.outputs["eqv_req_conf"].round(1)}\n')
+            self.case_reports.append(self.case.report_to_main())
+            if i == 1000:
+                break
+        self._summarise_run(which='run_b')
+        self._plot_summary_bars(which='run_b')
+        if self.inputs['run_b_setup'] == 'full':
+            self._plot_reliability_curves_summary(which='run_b')
 
