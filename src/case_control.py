@@ -403,7 +403,7 @@ class AssessmentCase:
         axs[0].set_xlabel('Fire duration (min)')
         axs[0].set_ylabel('Maximum gas temperature (°C)')
         axs[0].set_yticks(np.arange(axs[0].get_ylim()[0], axs[0].get_ylim()[1], 100))
-        axs[0].set_xticks(np.arange(axs[0].get_xlim()[0], axs[0].get_xlim()[1], 100))
+        axs[0].set_xticks(np.arange(axs[0].get_xlim()[0], axs[0].get_xlim()[1], 60))
         axs[0].legend()
         cb = fig.colorbar(_, extend='max')
         cb.set_label('Fire severity (min)')
@@ -416,24 +416,47 @@ class AssessmentCase:
     def _plot_max_el_temp_duration_quick(self):
 
         mrk_lst = ['o', '^', 's', '+']
-        N_max = 600  # maximum points for legibility
-        vmin = np.percentile(self.outputs['max_el_resp'], 2.5)
-        vmax = np.percentile(self.outputs['max_el_resp'], 97.5)  # autoscale the colormap to the first 95%
+        N_max = 600  # maximum points on main scatter - limit placed for legibility
+
+        #Definitions of axis
+        left, width = 0.1, 0.65
+        bottom, height = 0.1, 0.65
+        spacing = 0.015
+        main_scatter = [left, bottom, width, height]
+        rect_histx = [left, bottom + height + spacing, width, 0.2]
+        rect_histy = [left + width + spacing, bottom, 0.14, height]
 
         sns.set()
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig= plt.figure(figsize=(14, 10))
+
+        ax = fig.add_axes(main_scatter)
+        ax_histx = fig.add_axes(rect_histx, sharex=ax)
+        ax_histx.tick_params(axis="x", labelbottom=False)
+        ax_histy = fig.add_axes(rect_histy, sharey=ax)
+        ax_histy.tick_params(axis="y", labelleft=False)
+
+        #Holder for histogram data
+        x_hist = [[], []]
+        y_hist = [[], []]
 
         begin = 0
         for i, regime in enumerate(self.heating_regimes):
 
             if regime.is_empty: continue  # skip empty methodologies
 
-            red_sample = int(len(regime.params['burnout']) / self.sample_size * N_max)
+            red_sample = int(len(regime.params['burnout']) / self.sample_size * min(N_max ,self.sample_size))
             sampl_ind = np.random.choice(range(len(regime.params['burnout'])), red_sample, replace=False)
             x = regime.params['burnout']
             y1 = regime.params['max_gas_temp']
             col = self.outputs['max_el_resp'].reshape(-1)[begin:begin + len(x)]
             design_mask = (col < self.lim_factor + 5) & (col > self.lim_factor - 5)
+
+            #get mask for histogram
+            pass_mask = col <= self.lim_factor
+            x_hist[0].extend(x[pass_mask].tolist())
+            x_hist[1].extend(x[~pass_mask].tolist())
+            y_hist[0].extend(y1[pass_mask].tolist())
+            y_hist[1].extend(y1[~pass_mask].tolist())
 
             tmp_mask = np.zeros(design_mask.size, dtype=bool)
             tmp_mask[sampl_ind] = True
@@ -457,8 +480,28 @@ class AssessmentCase:
         ax.set_xlabel('Fire duration (min)')
         ax.set_ylabel('Maximum gas temperature (°C)')
         ax.set_yticks(np.arange(ax.get_ylim()[0], ax.get_ylim()[1], 100))
-        ax.set_xticks(np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 100))
+        ax.set_xticks(np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 60))
         ax.legend()
+
+        bins_x = np.arange(ax.get_xlim()[0], ax.get_xlim()[1], 15)
+        bins_y = np.arange(ax.get_ylim()[0], ax.get_ylim()[1], 25)
+        binned = list(np.histogram(x_hist[0], bins=bins_x))
+        binned[0] = np.array(binned[0]) / self.sample_size
+        ax_histx.bar(x=binned[1][:-1], height=binned[0], width=np.diff(binned[1]), align='edge', alpha=0.6,
+                     color='#4C72B0')
+        binned = list(np.histogram(x_hist[1], bins=bins_x))
+        binned[0] = np.array(binned[0]) / self.sample_size
+        ax_histx.bar(x=binned[1][:-1], height=binned[0], width=np.diff(binned[1]), align='edge', alpha=0.6,
+                     color='#DD8452')
+
+        binned = list(np.histogram(y_hist[0], bins=bins_y))
+        binned[0] = np.array(binned[0]) / self.sample_size
+        ax_histy.barh(y=binned[1][:-1], width=binned[0], height=np.diff(binned[1]), align='edge', alpha=0.6,
+                      color='#4C72B0')
+        binned = list(np.histogram(y_hist[1], bins=bins_y))
+        binned[0] = np.array(binned[0]) / self.sample_size
+        ax_histy.barh(y=binned[1][:-1], width=binned[0], height=np.diff(binned[1]), align='edge', alpha=0.6,
+                      color='#DD8452')
 
         plt.savefig(os.path.join(self.save_loc, f'{self.ID}_duration_response.png'),
                     dpi=150,
@@ -573,12 +616,24 @@ class CaseControler:
         self.run_a_summary = None
         self.run_b_summary = None
 
+        inputs = CaseControler._load_inputs_from_json(inputs)
         self.study_name = inputs['study_name']
         self.out_f = out_f
         self.inputs = inputs
         self._setup_folder_structure()
         self._update_with_sys_configs()
         self._save_inputs()
+
+    @staticmethod
+    def _load_inputs_from_json(inputs):
+        if isinstance(inputs, dict):
+            return inputs
+        try:
+            with open(inputs) as f:
+                inputs = json.load(f)
+            return inputs
+        except:
+            raise FileNotFoundError('Unable to load input json file.')
 
     def _update_with_sys_configs(self):
         """Updates the input file with non-user controlled configurations"""
