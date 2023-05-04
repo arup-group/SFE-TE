@@ -197,12 +197,14 @@ class AssessmentCase:
                 pass
             data[i] = data[i].round(3)
             begin = len(data[i])
-
-            if debug_return:
-                return data
+            if 'fire_eqv' in data[i].columns:
+                data[i] = data[i].sort_values(by='fire_eqv', ascending=False)
             else:
-                data[i].to_csv(os.path.join(self.save_loc, 'data', f'{self.ID}_FRS_{regime.SAVE_NAME}.csv'),
-                               index_label='ID')
+                data[i] = data[i].sort_values(by='max_el_resp', ascending=False)
+            data[i].to_csv(os.path.join(self.save_loc, 'data', f'{self.ID}_FRS_{regime.SAVE_NAME}.csv'),
+                            index_label='ID')
+        if debug_return:
+            return data
 
     def _save_thermal_response(self):
         """Saves thermal response vector as binary .npy"""
