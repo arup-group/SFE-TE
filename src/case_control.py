@@ -12,6 +12,7 @@ import os
 from textwrap import dedent
 import collections
 import itertools
+import time
 
 
 class AssessmentCase:
@@ -48,7 +49,8 @@ class AssessmentCase:
                         'eqv_conc_cover': -1,   # Eqv. concrete cover
                         'success_conv': None,  # Success flag whe
                         'max_el_resp': [], # Vector of maximum element temperatures at target resistance
-                        'fire_eqv': []}  # Vector of eqv. fire severtity for each fire
+                        'fire_eqv': [], # Vector of eqv. fire severtity for each fire
+                        'time': None}  # Analysis time
 
         self.lim_factor = self.ht_model.limiting_factor
         self._setup_save_folder_structure(save_loc)
@@ -162,7 +164,7 @@ class AssessmentCase:
         else:
             self.outputs['thermal_response'].append(thermal_response)
             self.outputs['t_hist'] = thermal_hist
-            print(f'Equiv: {equiv_exp}, Reliability: {reliability}')
+            print(f'Equivalent Severity: {equiv_exp}, Reliability: {reliability}')
 
     def _optimise_to_limiting_factor(self):
         self.max_optm_fxn = [10000]  # holder for a value of optimisation function
@@ -578,10 +580,13 @@ class AssessmentCase:
 
     def run_analysis(self):
         """Starts analysis"""
+        toc = time.time()
         if self.analysis_type == 'quick':
             self._quick_analysis()
         elif self.analysis_type == 'full':
             self._full_analysis()
+        tic = time.time()
+        self.outputs['time'] = tic - toc
 
     def report_to_main(self):
         """Reports data to main for the purposes of cross case analysis"""
@@ -593,14 +598,16 @@ class AssessmentCase:
                       'eqv_high': self.outputs['eqv_req_conf'][1],
                       'success_conv': self.outputs['success_conv'],
                       'n_itr': self.optm_result.nfev,
-                      'itr_err': self.optm_result.fun}
+                      'itr_err': self.optm_result.fun,
+                      'time': self.outputs['time']}
         elif self.analysis_type == 'full':
             report = {'name': self.name,
                       'ID': self.ID,
                       'eqv_est': self.outputs['eqv_req'],
                       'eqv_low': self.outputs['eqv_req_conf'][0],
                       'eqv_high': self.outputs['eqv_req_conf'][1],
-                      'success_conv': True}
+                      'success_conv': True,
+                      'time': self.outputs['time']}
 
         return report
 
@@ -751,7 +758,7 @@ class CaseControler:
         self._get_cases()
         self.case_reports = []
 
-        print(f'Commencing study A comprising of {len(self.cases)} cases.\n')
+        print(f'Commencing Study A comprising of {len(self.cases)} cases.\n')
 
         for i, case_ID in enumerate(self.cases):
             print(f'{i+1}/{len(self.cases)}. Analysing case {case_ID}_{self.cases[case_ID]["label"]}.')
@@ -769,10 +776,12 @@ class CaseControler:
                 bootstrap_rep=self.inputs['bootstrap_rep'])
             print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
             self.case.run_analysis()
-            print(f'Analysis for {self.case.name} completed. Convergence status: {self.case.outputs["success_conv"]}')
-            print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, conf: {self.case.outputs["eqv_req_conf"].round(1)}\n')
+            print(f'Analysis for {self.case.name} completed in {self.case.outputs["time"]:.1f} s. Convergence status: {self.case.outputs["success_conv"]}')
+            print(f'Undertaken iterations: {self.case.optm_result.nfev}. Convergence status: {self.case.outputs["success_conv"]}')
+            print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, 95 % confidence interval: {self.case.outputs["eqv_req_conf"].round(1)}\n')
             self.case_reports.append(self.case.report_to_main())
             if i == 5:
+                print(f'Maximum limit of {i+1} cases for Study A exceeded.')
                 break
         self._summarise_run(which='run_a')
         self._plot_summary_bars(which='run_a')
@@ -886,7 +895,7 @@ class CaseControler:
             return
 
         self._select_run_b_cases()
-        print(f'Commencing detailed study B analysis for cases {self.selected_b_cases}\n')
+        print(f'Commencing detailed Study B analysis for cases {self.selected_b_cases}\n')
         self.case_reports = []
         for i, case_ID in enumerate(self.selected_b_cases):
             print(f'{i + 1}/{len(self.selected_b_cases)}. Analysing case {case_ID}b_{self.cases[case_ID]["label"]}.')
