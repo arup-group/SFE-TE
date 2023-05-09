@@ -4,20 +4,20 @@ import equivalent_curves as ecr
 import risk_models as rm
 
 UNIT_CATALOGUE = {
-    'A_c': {'ui_label': 'ca', 'title': 'Compartment area', 'unit': 'm$^2$'},
+    'A_c': {'ui_label': 'Ac', 'title': 'Compartment area', 'unit': 'm$^2$'},
     'c_ratio': {'ui_label': 'csr', 'title': 'Compartment sides ratio', 'unit': '-'},
-    'h_c': {'ui_label': 'ch', 'title': 'Compartment height', 'unit': 'm'},
-    'w_frac': {'ui_label': 'vpr', 'title': 'Ventilated perimeter fraction', 'unit': '-'},
-    'w_frac_h': {'ui_label': 'heq', 'title': 'Compartment height window height fraction', 'unit': '-'},
+    'h_c': {'ui_label': 'Hc', 'title': 'Compartment height', 'unit': 'm'},
+    'w_frac': {'ui_label': 'vpr', 'title': 'Ventilated perimeter ratio', 'unit': '-'},
+    'w_frac_h': {'ui_label': 'whr', 'title': 'Window compartment height ratio', 'unit': '-'},
     'remain_frac': {'ui_label': 'trf', 'title': 'Thermal resilience', 'unit': '-'},
-    'fabr_inrt': {'ui_label': 'ftr', 'title': 'Fabric thermal inertia', 'unit': 'J/m$^2$s$^{1/2}$K'},
+    'fabr_inrt': {'ui_label': 'fbr', 'title': 'Fabric thermal inertia', 'unit': 'J/m$^2$s$^{1/2}$K'},
     'q_f_d': {'ui_label': 'fl', 'title': 'Fuel load', 'unit': 'MJ/m$^2$'},
     'Q': {'ui_label': 'hrr', 'title': 'Heat release rate per unit area', 'unit': 'KW/m$^2$'},
     't_lim': {'ui_label': 'gr', 'title': 'Fire growth rate', 'unit': 'min'},
     'spr_rate': {'ui_label': 'spr', 'title': 'Fire spread rate', 'unit': 'mm/s'},
     'flap_angle': {'ui_label': 'fa', 'title': 'Flapping angle', 'unit': 'deg'},
-    'T_nf_max': {'ui_label': 'tnf', 'title': 'Near field max temperature', 'unit': '°C'},
-    'T_amb': {'ui_label': 'amb', 'title': 'Ambient temperature', 'unit': '°C'}}
+    'T_nf_max': {'ui_label': 'Tnf', 'title': 'Near field max temperature', 'unit': '°C'},
+    'T_amb': {'ui_label': 'Tamb', 'title': 'Ambient temperature', 'unit': '°C'}}
 
 METHODOLOGIES = {
     'heating_regimes': {

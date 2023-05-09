@@ -313,11 +313,35 @@ class UniEC1(GenericRegime):
             curve_data[i, :] = self.get_exposure(t, subsample_mask)
         return curve_data
 
-    def summarise_parameters(self, param_list='concise'):
+    def summarise_parameters(self, param_list='concise', descriptive_cols=True):
         """Returns all calculated parameters in human readable table format
         Inputs:
             param_list (str): accepts either 'full' or 'concise' to define different interm. parameters to report
              default is concise."""
+
+        descriptions = {'c_long': 'c_long (m)',
+                        'c_ratio': 'csr',
+                        'c_short': 'c_short (m)',
+                        'A_c': 'Ac (m)',
+                        'h_c': 'Hc (m)',
+                        'w_frac_h': 'whr',
+                        'c_perim': 'compart_perimeter(m)',
+                        'A_t': 'At (m2)',
+                        'h_w_eq': 'avg_opening_height (m)',
+                        'w_frac': 'vpr',
+                        'remain_frac': 'trf',
+                        'A_v': 'Av (m2)',
+                        'Of_max': 'Of_max',
+                        'Of': 'Of',
+                        'fabr_inrt': 'fbr (J/m^2s^0.5K)',
+                        'q_f_d': 'fld (MJ/m2)',
+                        'GA': 'GA',
+                        'q_t_d': 'q_td (MJ/m2)',
+                        't_lim': 'gr (min)',
+                        'max_temp_t': 'time_max_temp (h)',
+                        'max_temp': 'max_temp (min)',
+                        'burnout': 'burnout (min)',
+                        'max_gas_temp': 'max_gas_temp (degC)'}
 
         if param_list is 'full':
             col_list = ['c_ratio', 'c_long', 'c_short', 'A_c', 'h_c', 'w_frac_h', 'c_perim', 'A_t', 'h_w_eq', 'w_frac', 'remain_frac',
@@ -330,6 +354,8 @@ class UniEC1(GenericRegime):
                         'Of_lim', 'k', 'GA_lim', 'regime', 'max_temp_t', 'max_temp', 'burnout', 'max_gas_temp']
         data = pd.DataFrame.from_dict({k: self.params[k] for k in col_list})
         data = data[col_list]
+        if descriptive_cols:
+            data = data.rename(columns=descriptions)
         data = data.set_index(np.array(self.relevent_df_indices).flatten())
         # Record amended fires:
         for k in self.amended_df_indices:
@@ -531,11 +557,36 @@ class TravelingISO16733(GenericRegime):
         self._calc_average_near_field_temp()
         self._define_max_gas_temperature()
 
-    def summarise_parameters(self, param_list='concise'):
+    def summarise_parameters(self, param_list='concise', descriptive_cols=True):
         """Returns all calculated parameters in human readable table format
         Inputs:
             param_list (str): accepts either 'full' or 'concise' to define different interm. parameterts to report
-             default is concise."""
+             default is concise.
+            descriptive_cols (bool): Renames columns in more descriptive names including units"""
+
+        descriptions = {'c_long': 'c_long (m)',
+                        'c_ratio': 'crt',
+                        'c_short': 'c_short (m)',
+                        'A_c': 'Ac (m)',
+                        'h_c': 'Hc (m)',
+                        'q_f_d': 'fld (MJ/m2)',
+                        'Q': 'hrr (KW/m2)',
+                        'spr_rate': 'spr (mm/s)',
+                        'T_amb': 'Tamb (degC)',
+                        'flap_angle': 'fa (deg)',
+                        't_b': 'local_burnout (s)',
+                        'L_f': 'fire_length (m)',
+                        'A_f': 'fire_area (m2)',
+                        'L_str': 'Lstr',
+                        'x_loc': 'assessed_location (m)',
+                        'f': 'flapping_length (m)',
+                        'r_0': 'r0 (m)',
+                        'r_x1': 'rx1 (m)',
+                        'r_x2': 'rx2 (m)',
+                        'T_nf_max': 'Tnf (degC)',
+                        'T_nf': 'Tnf_flapping (degC)',
+                        'burnout': 'burnout (min)',
+                        'max_gas_temp': 'max_gas_temp (degC)'}
 
         if param_list is 'full':
             col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'T_amb', 'flap_angle',
@@ -543,9 +594,11 @@ class TravelingISO16733(GenericRegime):
                         'max_gas_temp']
         elif param_list is 'concise':
             col_list = ['c_long', 'c_ratio', 'c_short', 'A_c', 'h_c', 'q_f_d', 'Q', 'spr_rate', 'flap_angle',
-                        't_b', 'L_f', 'x_loc', 'A_f', 'L_str', 'T_nf_max', 'T_nf', 'burnout', 'max_gas_temp']
+                        't_b', 'L_f', 'f', 'x_loc', 'A_f', 'L_str', 'T_nf_max', 'T_nf', 'burnout', 'max_gas_temp']
         data = pd.DataFrame.from_dict({k: self.params[k] for k in col_list})
         data = data[col_list]
+        if descriptive_cols:
+            data = data.rename(columns=descriptions)
         data = data.set_index(np.array(self.relevent_df_indices).flatten())
         # Record amended fires:
         for k in self.amended_df_indices:
