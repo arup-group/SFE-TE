@@ -234,7 +234,8 @@
     "risk_method": {
         "bs_9999": {
             "building_height": 66.75,
-            "sprinkler_reliability": 93
+            "sprinkler_reliability": 93,
+            "occupancy": "awake"
         }
     },
     "eqv_curve": "iso_834",

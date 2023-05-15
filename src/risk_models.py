@@ -22,10 +22,14 @@ class GenericRiskModel:
 
 class KirbyBS9999(GenericRiskModel):
 
-    def __init__(self, sprinkler_reliability, building_height):
+    RISK_FACTORS = {'awake': 64.8,
+                    'sleeping': 25.92}
+
+    def __init__(self, sprinkler_reliability, building_height, occupancy):
         super().__init__()
         self.sprinkler_reliability = sprinkler_reliability
         self.building_height = building_height
+        self.occupancy = occupancy
 
         #Parameters that will change
         self.total_reliability = None
@@ -45,7 +49,7 @@ class KirbyBS9999(GenericRiskModel):
     def assess_risk_target(self):
         """Assess total and structural reliability as per methodology outlined in Kirby et al"""
 
-        self.total_reliability = 1 - 64.8/self.building_height**2
+        self.total_reliability = 1 - KirbyBS9999.RISK_FACTORS[self.occupancy]/self.building_height**2
         self.struct_reliability = (self.total_reliability - self.sprinkler_reliability/100)/(1 - self.sprinkler_reliability/100)
         self.risk_target = self.struct_reliability
 
