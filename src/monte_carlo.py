@@ -69,8 +69,6 @@ class TriangularDistr(GenericDistr):
     def report_params(self):
         return {'label': TriangularDistr.label, 'mode': self.m}
 
-
-
 class UniBiomodalDistr(GenericDistr):
     label = 'Bimodal uniform distribution'
 

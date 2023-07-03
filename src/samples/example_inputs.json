@@ -265,7 +265,7 @@
             "dt": 30,
             "lim_temp": 550,
             "eqv_max": 180,
-            "eqv_step": 10
+            "eqv_step": 5
         }
     },
     "run_a_setup": "quick",
