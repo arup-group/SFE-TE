@@ -1,5 +1,5 @@
 {
-    "study_name": "yavor",
+    "study_name": "quick_test",
     "parameters": {
         "A_c": [
             [
@@ -11,33 +11,12 @@
                 0.5,
                 null,
                 null
-            ],
-            [
-                "rect_pulse",
-                20,
-                391,
-                0.33,
-                0.66,
-                0.5,
-                null,
-                null
-            ],
-            [
-                "rect_pulse",
-                20,
-                391,
-                0.66,
-                1,
-                0.5,
-                null,
-                null
-            ]
-        ],
+            ]],
         "c_ratio": [
             [
                 "uniform",
                 0.25,
-                0.5,
+                1.0,
                 null,
                 null,
                 null,
@@ -181,16 +160,6 @@
                 0.5,
                 null,
                 null
-            ],
-            [
-                "rect_pulse",
-                0.1,
-                19.3,
-                0.66,
-                1,
-                0.5,
-                null,
-                null
             ]
         ],
         "flap_angle": [
@@ -265,7 +234,7 @@
             "dt": 30,
             "lim_temp": 550,
             "eqv_max": 180,
-            "eqv_step": 5
+            "eqv_step": 10
         }
     },
     "run_a_setup": "quick",

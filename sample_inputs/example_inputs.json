@@ -1,0 +1,282 @@
+{
+    "study_name": "test_001",
+    "parameters": {
+        "A_c": [
+            [
+                "rect_pulse",
+                20,
+                391,
+                0,
+                0.33,
+                0.5,
+                null,
+                null
+            ],
+            [
+                "rect_pulse",
+                20,
+                391,
+                0.33,
+                0.66,
+                0.5,
+                null,
+                null
+            ],
+            [
+                "rect_pulse",
+                20,
+                391,
+                0.66,
+                1,
+                0.5,
+                null,
+                null
+            ]
+        ],
+        "c_ratio": [
+            [
+                "uniform",
+                0.25,
+                1.0,
+                null,
+                null,
+                null,
+                null,
+                null
+            ]
+        ],
+        "h_c": [
+            [
+                "fixed_point",
+                null,
+                null,
+                2.8,
+                null,
+                null,
+                null,
+                null
+            ]
+        ],
+        "q_f_d": [
+            [
+                "gumbel",
+                0,
+                null,
+                446.5,
+                170,
+                null,
+                null,
+                null
+            ]
+        ],
+        "w_frac": [
+            [
+                "uniform",
+                0.05,
+                0.5,
+                null,
+                null,
+                null,
+                null,
+                null
+            ]
+        ],
+        "w_frac_h": [
+            [
+                "uniform",
+                0.7,
+                1,
+                null,
+                null,
+                null,
+                null,
+                null
+            ]
+        ],
+        "remain_frac": [
+            [
+                "weibull",
+                null,
+                1,
+                0.2,
+                0.2,
+                null,
+                null,
+                null
+            ]
+        ],
+        "t_lim": [
+            [
+                "uniform",
+                15,
+                25,
+                null,
+                null,
+                null,
+                null,
+                null
+            ]
+        ],
+        "fabr_inrt": [
+            [
+                "normal",
+                50,
+                2200,
+                1100,
+                100,
+                null,
+                null,
+                null
+            ]
+        ],
+        "Q": [
+            [
+                "rect_pulse",
+                250,
+                550,
+                0,
+                0.33,
+                0.5,
+                null,
+                null
+            ],
+            [
+                "rect_pulse",
+                250,
+                550,
+                0.33,
+                0.66,
+                0.5,
+                null,
+                null
+            ],
+            [
+                "rect_pulse",
+                250,
+                550,
+                0.66,
+                1,
+                0.5,
+                null,
+                null
+            ]
+        ],
+        "spr_rate": [
+            [
+                "rect_pulse",
+                0.1,
+                19.3,
+                0,
+                0.33,
+                0.5,
+                null,
+                null
+            ],
+            [
+                "rect_pulse",
+                0.1,
+                19.3,
+                0.33,
+                0.66,
+                0.5,
+                null,
+                null
+            ],
+            [
+                "rect_pulse",
+                0.1,
+                19.3,
+                0.66,
+                1,
+                0.5,
+                null,
+                null
+            ]
+        ],
+        "flap_angle": [
+            [
+                "fixed_point",
+                null,
+                null,
+                6.5,
+                null,
+                null,
+                null,
+                null
+            ]
+        ],
+        "T_nf_max": [
+            [
+                "uniform",
+                1000,
+                1200,
+                null,
+                null,
+                null,
+                null,
+                null
+            ]
+        ],
+        "T_amb": [
+            [
+                "fixed_point",
+                null,
+                null,
+                20,
+                null,
+                null,
+                null,
+                null
+            ]
+        ]
+    },
+    "T_amb": 20,
+    "risk_method": {
+        "bs_9999": {
+            "building_height": 66.75,
+            "sprinkler_reliability": 93,
+            "occupancy": "awake"
+        }
+    },
+    "eqv_curve": "iso_834",
+    "heating_regimes": {
+        "uni_bs_en_1991_1_2": {
+            "crit_value": 100,
+            "Of_limits": [
+                0.02,
+                0.2
+            ],
+            "max_fire_duration": 1000
+        },
+        "trav_iso_16733_2": {
+            "crit_value": 100,
+            "max_travel_path": 27,
+            "assess_loc": 0.51,
+            "max_fire_duration": 1000
+        }
+    },
+    "eqv_method": {
+        "0d_ht_bs_en_1993_1_2": {
+            "A_v": 70,
+            "c_p": 900,
+            "k_p": 0.17,
+            "ro_p": 700,
+            "T_amb": 20,
+            "dt": 30,
+            "lim_temp": 550,
+            "eqv_max": 180,
+            "eqv_step": 5
+        }
+    },
+    "run_a_setup": "quick",
+    "run_b_setup": "full",
+    "param_mode": "grid",
+    "random_seed": null,
+    "run_a_sample_size": 1000,
+    "run_b_sample_size": 10000,
+    "bootstrap_rep": 1000,
+    "sample_fires": [
+        60,
+        90
+    ]
+}
