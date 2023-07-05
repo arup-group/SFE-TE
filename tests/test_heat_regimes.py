@@ -28,7 +28,7 @@ class TestFlashEC1(unittest.TestCase):
         # Test c_long calculation
         expected_result = np.array([14.142, 7.746])
         npt.assert_almost_equal(self.parametric.params['c_long'], expected_result, decimal = 3)
-        # Test c_short calculation
+       # Test c_short calculation
         expected_result = np.array([2.828 , 7.746])
         npt.assert_almost_equal(self.parametric.params['c_short'], expected_result, decimal = 3)
 
@@ -139,9 +139,9 @@ class TestTravelingISO16733(unittest.TestCase):
             'h_c': np.array([3, 4]),
             'c_ratio': np.array([0.2, 1]),
             'q_f_d': np.array([300, 300]),
-            'Q': np.array([,]),
-            'spr_rate': np.array([,]),
-            'flap_angle': np.array([, ]),
+            'Q': np.array([]),
+            'spr_rate': np.array([]),
+            'flap_angle': np.array([ ]),
             'T_nf_max': np.array([])}
         crit_value = 100
 
