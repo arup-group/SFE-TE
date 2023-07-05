@@ -154,7 +154,6 @@ class UniEC1(GenericRegime):
         self.params['Of'][self.params['Of'] > self.Of_limits[1]] = self.Of_limits[1]
         self.params['Of'][self.params['Of'] < self.Of_limits[0]] = self.Of_limits[0]
 
-
     def _calc_total_surface_area_fuel_density(self):
         """See BS EN 1993-1-2 A.7 UNIT TEST REQUIRED"""
         self.params['q_t_d'] = self.params['q_f_d']*self.params['A_c']/self.params['A_t']
@@ -162,50 +161,38 @@ class UniEC1(GenericRegime):
         self.params['q_t_d'][self.params['q_t_d'] > 1000] = 1000
         self.params['q_t_d'][self.params['q_t_d'] < 50] = 50
 
-        print("q_t_d: ", self.params['q_t_d'])
+        # print("q_t_d: ", self.params['q_t_d'])
 
     def _calc_open_factor_fuel(self):
         """See BS EN 1993-1-2 A.2a UNIT TEST REQUIRED"""    #Of_lim in in BS EN 1993-1-2 A.9 ?
         self.params['Of_lim'] = 0.0001*self.params['q_t_d']/self.params['t_max_fuel']
 
-        print("Of_lim: ", self.params['Of_lim'])
+        # print("Of_lim: ", self.params['Of_lim'])
 
     def _calc_GA_factor(self):
         """See BS EN 1993-1-2 A.9 UNIT TEST REQUIRED"""
         self.params['GA'] = ((self.params['Of']/self.params['fabr_inrt'])/(0.04/1160))**2
 
-        print("GA: ", self.params['GA'])
+        # print("GA: ", self.params['GA'])
 
     def _calc_GA_lim_factor(self):
         """See BS EN 1993-1-2 A.8 UNIT TEST REQUIRED"""
         self.params['GA_lim'] = ((self.params['Of_lim']/self.params['fabr_inrt'])/(0.04/1160))**2
-        # self.params['GA_lim'] = (((self.params['Of_lim'] / self.params['fabr_inrt']) / (0.04 / 1160)) ** 2)\
-        #                         *self.params['k']
 
-        print("GA_lim: ", self.params['GA_lim'])
 
     def _calc_GA_lim_k_mod(self):
         """See BS EN 1993-1-2 A.10 UNIT TEST REQUIRED"""
         self.params['k'] = np.ones_like(self.params['GA_lim'])
-        # self.params['k'] = np.ones_like(self.params['Of_lim'])
 
-        print("k init: ", self.params['k'])
         #Apply criteria from BS EN 1991-1-2 A.9
         crit = (self.params['Of'] > 0.04) & (self.params['q_t_d'] < 75) & (self.params['fabr_inrt'] < 1160)
         self.params['k'][crit] = 1 + ((self.params['Of'][crit]-0.04)/0.04) * \
                                  ((self.params['q_t_d'][crit]-75)/75) *\
                                  ((1160 - self.params['fabr_inrt'][crit])/1160)
 
-        #   Momoi - changed Of to Of_lim
-        # crit = (self.params['Of_lim'] > 0.04) & (self.params['q_t_d'] < 75) & (self.params['fabr_inrt'] < 1160)
-        # self.params['k'][crit] = 1 + ((self.params['Of_lim'][crit]-0.04)/0.04) * \
-        #                          ((self.params['q_t_d'][crit]-75)/75) *\
-        #                          ((1160 - self.params['fabr_inrt'][crit])/1160)
-
-        #   Momoi - GA_lim with xk to be calculated in -calc-GA_lim_k_mod
         self.params['GA_lim'] = self.params['GA_lim']*self.params['k']
 
-        print("k: ", self.params['k'])
+        # print("k: ", self.params['k'])
 
     def _calc_t_max_vent(self):
         """Maximum time for ventilation controlled fire. See BS EN 1993-1-2 A.7, UNIT TEST REQUIRED"""
