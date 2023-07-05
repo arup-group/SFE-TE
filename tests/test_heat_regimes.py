@@ -16,7 +16,6 @@ class TestFlashEC1(unittest.TestCase):
             'remain_frac': np.array([0.0, 0.1]),
             'q_f_d': np.array([300, 300]),
             't_lim': np.array([15, 20]),
-            # 'foo': np.array([432, 53]),  #unclear
             'fabr_inrt' : np.array([1000, 1000])}
         crit_value = 100
 
