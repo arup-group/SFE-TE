@@ -94,8 +94,9 @@ class UniEC1(GenericRegime):
         self._calc_average_window_height()  # calc h_w_eq
         self._calc_total_ventilation_area()  # calc Av
         self._calc_max_open_factor()  # calc Of_max
-        self._calc_open_factor_breakage()  # calc Of
         self._apply_open_factor_limits()
+        self._calc_open_factor_breakage()  # calc Of
+        # self._apply_open_factor_limits()
         self._calc_GA_factor()  # calc Ga
         self._calc_total_surface_area_fuel_density() # calc q_t_d from q_f_d
         self._calc_t_max_vent()  # Calc t_max for ventilation controlled fire
@@ -103,8 +104,10 @@ class UniEC1(GenericRegime):
         self._calc_open_factor_fuel() # Calc open factor for fuel controlled - Of lim
         self._calc_GA_lim_factor()  # Calc GA_lim
         self._calc_GA_lim_k_mod()  # Calc k factor for GA_lim
-        self._define_burning_regime()  # Defines whether it is ventilation control or fuel control fire
+        # self._calc_GA_lim_k_mod()  # Calc k factor for GA_lim
+        # self._calc_GA_lim_factor()  # Calc GA_lim
         self._calc_max_temp_time()  # Calculates the time of max temperature
+        self._define_burning_regime()  # Defines whether it is ventilation control or fuel control fire
         self._calc_t_star_max()  # Calculates t star helping parameters
         self._calc_max_temp()  # calculates max temperature
         self._calc_fire_duration()  # Calculates burnout in [min]
@@ -133,7 +136,8 @@ class UniEC1(GenericRegime):
 
     def _calc_max_open_factor(self):
         """See BS EN 1991-1-2 A.2a. UNIT TEST REQUIRED"""
-        self.params['Of_max'] = self.params['A_v']*np.sqrt(self.params['h_w_eq'])/self.params['A_t']
+        # self.params['Of_max'] = self.params['A_v']*np.sqrt(self.params['h_w_eq'])/self.params['A_t']
+        self.params['Of_max'] = ((1-self.params['remain_frac'])*self.params['A_v'] * np.sqrt(self.params['h_w_eq'])) / self.params['A_t']
 
     def _calc_open_factor_breakage(self):
         """Refer to TGN B4.5.3 and JCSS - 2 Clause 2.20.4.1. UNIT TEST"""
@@ -143,6 +147,7 @@ class UniEC1(GenericRegime):
         """Applies limits to Of for EC1 methodology which are user defined.
         See BS EN 1991-1-2 A.2a and  PD 6688-1-2:2007 Section 3.1.2(d)
         UNIT TEST REQUIRED"""
+
         self.params['Of'][self.params['Of'] > self.Of_limits[1]] = self.Of_limits[1]
         self.params['Of'][self.params['Of'] < self.Of_limits[0]] = self.Of_limits[0]
 
@@ -159,23 +164,37 @@ class UniEC1(GenericRegime):
 
     def _calc_GA_factor(self):
         """See BS EN 1993-1-2 A.9 UNIT TEST REQUIRED"""
-        self.params['GA'] = ((self.params['Of']/self.params['fabr_inrt'])/(0.04/1160))**2
+        # self.params['GA'] = ((self.params['Of']/self.params['fabr_inrt'])/(0.04/1160))**2
+        self.params['GA'] = ((self.params['Of_max'] / self.params['fabr_inrt']) / (0.04 / 1160)) ** 2
 
     def _calc_GA_lim_factor(self):
         """See BS EN 1993-1-2 A.8 UNIT TEST REQUIRED"""
-        self.params['GA_lim'] = ((self.params['Of_lim']/self.params['fabr_inrt'])/(0.04/1160))**2
+        self.params['GA_lim'] = ((self.params['Of_lim']/self.params['fabr_inrt'])**2/(0.04/1160)**2)
+        # self.params['GA_lim'] = ((self.params['Of_lim'] / self.params['fabr_inrt']) ** 2 / (0.04 / 1160) ** 2)*self.params['k']
 
     def _calc_GA_lim_k_mod(self):
         """See BS EN 1993-1-2 A.10 UNIT TEST REQUIRED"""
-        self.params['k'] = np.ones_like(self.params['GA_lim'])
+        self.params['k'] = np.ones_like(self.params['GA'])
         #Apply criteria from BS EN 1991-1-2 A.9
-        crit = (self.params['Of'] > 0.04) & (self.params['q_t_d'] < 75) & (self.params['fabr_inrt'] < 1160)
-        self.params['k'][crit] = 1 + ((self.params['Of'][crit]-0.04)/0.04) * ((self.params['q_t_d'][crit]-75)/75) * ((1160 - self.params['fabr_inrt'][crit])/1160)
+        # crit = (self.params['Of'] > 0.04) & (self.params['q_t_d'] < 75) & (self.params['fabr_inrt'] < 1160)
+        # self.params['k'][crit] = 1 + ((self.params['Of'][crit]-0.04)/0.04) \
+        #                          * ((self.params['q_t_d'][crit]-75)/75) \
+        #                          * ((1160 - self.params['fabr_inrt'][crit])/1160)
+        # self.params['GA_lim'] = self.params['GA_lim']*self.params['k']
+
+        crit = (self.params['Of_max'] > 0.04) & (self.params['q_t_d'] < 75) & (self.params['fabr_inrt'] < 1160)
+        self.params['k'][crit] = 1 + ((self.params['Of_max'][crit]-0.04)/0.04) \
+                                 * ((self.params['q_t_d'][crit]-75)/75) \
+                                 * ((1160 - self.params['fabr_inrt'][crit])/1160)
         self.params['GA_lim'] = self.params['GA_lim']*self.params['k']
+
+
+
 
     def _calc_t_max_vent(self):
         """Maximum time for ventilation controlled fire. See BS EN 1993-1-2 A.7, UNIT TEST REQUIRED"""
-        self.params['t_max_vent'] = 0.0002*self.params['q_t_d']/self.params['Of']
+        # self.params['t_max_vent'] = 0.0002*self.params['q_t_d']/self.params['Of']
+        self.params['t_max_vent'] = 0.0002 * self.params['q_t_d'] / self.params['Of_max']
 
     def _calc_t_max_fuel(self):
         self.params['t_max_fuel'] = self.params['t_lim']/60
@@ -183,7 +202,14 @@ class UniEC1(GenericRegime):
     def _define_burning_regime(self):
         """Decides whether burning regime is ventilation or fuel controlled, UNIT TEST REQUIRED"""
         self.params['regime'] = np.full(len(self.params['A_c']), 'V')
+        # print(self.params['regime'])
+        # print(self.params['t_max_fuel'])
+        # print(self.params['t_max_vent'])
         self.params['regime'][self.params['t_max_fuel'] > self.params['t_max_vent']] = 'F'
+        # print(self.params['regime'])
+        # print(self.params['max_temp_t'])
+        # self.params['regime'][self.params['t_lim'] > self.params['max_temp_t']] = 'F'
+
 
     def _calc_max_temp_time(self):
         """Returns maximum time based from the two regimes. See BS EN 1991-1-2 A.7"""
@@ -294,13 +320,13 @@ class UniEC1(GenericRegime):
         crit = sub_params['regime'] == 'F'
         t_str_heat[crit] = sub_params['GA_lim'][crit] * t/60
 
-        #Calculate heating and colling temperatures. These are compared to avoid discontinuities
-        # The logic is that if t_str is smaller than t_max_str the resulting temp will allways be bigger
-        #than temp max calculated from the heating phase Similar approach is implemented in the SFE toolkit
+        # Calculate heating and colling temperatures. These are compared to avoid discontinuities
+        # The logic is that if t_str is smaller than t_max_str the resulting temp will always be bigger
+        # than temp max calculated from the heating phase Similar approach is implemented in the SFE toolkit
         heat_phase_temp = self._calc_heat_phase_temp(t_str_heat)
         cool_phase_temp = self._calc_cooling_phase_temp(t, sub_params)
 
-        return np.min([heat_phase_temp, cool_phase_temp], axis=0)
+        return np.min([heat_phase_temp, cool_phase_temp], axis=0), t_str_heat
 
     def get_time_temperature_curves(self, t_values, subsample_mask):
         """Get time temperature curves"""
