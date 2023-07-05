@@ -101,12 +101,8 @@ class UniEC1(GenericRegime):
         self._calc_t_max_vent()  # Calc t_max for ventilation controlled fire
         self._calc_t_max_fuel()  # Calc t_max for fuel control fire
         self._calc_open_factor_fuel() # Calc open factor for fuel controlled - Of lim
-
-        #   Momoi - chnaged the order of the below two
-        # self._calc_GA_lim_k_mod()  # Calc k factor for GA_lim
         self._calc_GA_lim_factor()  # Calc GA_lim
         self._calc_GA_lim_k_mod()  # Calc k factor for GA_lim
-
         self._define_burning_regime()  # Defines whether it is ventilation control or fuel control fire
         self._calc_max_temp_time()  # Calculates the time of max temperature
         self._calc_t_star_max()  # Calculates t star helping parameters
