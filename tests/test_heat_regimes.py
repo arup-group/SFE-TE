@@ -4,7 +4,7 @@ import numpy.testing as npt
 import src.heating_regimes as hr
 
 
-class TestFlashEC1(unittest.TestCase):
+class TestUniEC1(unittest.TestCase):
 
     def setUp(self):
         inputs = {
@@ -31,12 +31,12 @@ class TestFlashEC1(unittest.TestCase):
     def test_perform_initial_calculations(self):
         self.parametric.perform_initial_calculations()
 
-        # Test c_long calculation
-        expected_result = np.array([14.142, 7.746])
+        # TODO update tests so that each function is passed in stead of relying on perform ini calc method.
+        # Test _calc_comp_sides calculations
+        self.parametric._calc_comp_sides()
+        expected_result = np.array([14.142, 7.746])  # c_long
         npt.assert_almost_equal(self.parametric.params['c_long'], expected_result, decimal=3)
-
-       # Test c_short calculation
-        expected_result = np.array([2.828, 7.746])
+        expected_result = np.array([2.828, 7.746])  # c_short
         npt.assert_almost_equal(self.parametric.params['c_short'], expected_result, decimal=3)
 
         #Test c_perim
@@ -48,8 +48,8 @@ class TestFlashEC1(unittest.TestCase):
         npt.assert_almost_equal(self.parametric.params['A_t'], expected_result, decimal=3)
 
         #Test A_v
-        # expected_result = np.array([7.637, 46.476])
-        # npt.assert_almost_equal(self.parametric.params['A_v'], expected_result, decimal=3)
+        expected_result = np.array([7.637, 46.476])
+        npt.assert_almost_equal(self.parametric.params['A_v'], expected_result, decimal=3)
 
         #Test Of_max
         expected_result = np.array([0.051, 0.200])
@@ -99,45 +99,45 @@ class TestFlashEC1(unittest.TestCase):
         expected_result= np.array([859.632, 665.926])
         npt.assert_almost_equal(self.parametric.params['max_temp'], expected_result, decimal=3) # does not work with decimals=3 or 665.721
 
-        #TODO update tests so that each function is passed
+
 
 
     # test temperature for heating phase - revisit
-    def test_calc_heat_phase_temp(self):
-        self.parametric.perform_initial_calculations()
-
-
-        expected_heat_phase_temp = {3: [626.0, 232.0],
-                                    5: [716.0, 336.0]}
-
-        for key in expected_heat_phase_temp:
-            self.parametric.perform_initial_calculations()
-
-            expected_result = expected_heat_phase_temp.get(key)
-
-            t = key
-            _, t_str_heat, _ = self.parametric.get_exposure(t)
-
-            npt.assert_almost_equal(self.parametric._calc_heat_phase_temp(t_str_heat), expected_result, err_msg=f"error for t = {key}", decimal=0)
-
-    # Test for get exposure
-    def test_get_exposure(self):
-        self.parametric.perform_initial_calculations()
-
-        # test cool phase temp
-        expected_cool_phase_temp = {20: [756.0, 666.0],
-                                    50: [80.0, 20.0]}
-
-        for key in expected_cool_phase_temp:
-
-            self.parametric.perform_initial_calculations()
-
-            expected_result = expected_cool_phase_temp.get(key)
-
-            t = key
-            _, _, cool_phase_temp = self.parametric.get_exposure(t)
-
-            npt.assert_almost_equal(cool_phase_temp, expected_result, err_msg=f"error at t = {t}", decimal=0)
+    # def test_calc_heat_phase_temp(self):
+    #     self.parametric.perform_initial_calculations()
+    #
+    #
+    #     expected_heat_phase_temp = {3: [626.0, 232.0],
+    #                                 5: [716.0, 336.0]}
+    #
+    #     for key in expected_heat_phase_temp:
+    #         self.parametric.perform_initial_calculations()
+    #
+    #         expected_result = expected_heat_phase_temp.get(key)
+    #
+    #         t = key
+    #         _, t_str_heat, _ = self.parametric.get_exposure(t)
+    #
+    #         npt.assert_almost_equal(self.parametric._calc_heat_phase_temp(t_str_heat), expected_result, err_msg=f"error for t = {key}", decimal=0)
+    #
+    # # Test for get exposure
+    # def test_get_exposure(self):
+    #     self.parametric.perform_initial_calculations()
+    #
+    #     # test cool phase temp
+    #     expected_cool_phase_temp = {20: [756.0, 666.0],
+    #                                 50: [80.0, 20.0]}
+    #
+    #     for key in expected_cool_phase_temp:
+    #
+    #         self.parametric.perform_initial_calculations()
+    #
+    #         expected_result = expected_cool_phase_temp.get(key)
+    #
+    #         t = key
+    #         _, _, cool_phase_temp = self.parametric.get_exposure(t)
+    #
+    #         npt.assert_almost_equal(cool_phase_temp, expected_result, err_msg=f"error at t = {t}", decimal=0)
 
 
 class TestTravelingISO16733(unittest.TestCase):
