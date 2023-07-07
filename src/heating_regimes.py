@@ -435,7 +435,7 @@ class TravelingISO16733(GenericRegime):
         self.params['t_b'] = 1000*self.params['q_f_d']/self.params['Q']
 
     def _calc_fire_base_length(self):
-        """Calculates burning time for individual segment. See TGN C2"""
+        """Calculates the maximum dimension of the fire base. See TGN C2 - C3.2"""
         self.params['L_f'] = self.params['spr_rate'] * self.params['t_b']/1000
 
     def _calc_fire_base_area(self):

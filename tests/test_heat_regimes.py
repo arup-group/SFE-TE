@@ -29,76 +29,90 @@ class TestUniEC1(unittest.TestCase):
             Of_limits=Of_limits)
 
     def test_perform_initial_calculations(self):
-        self.parametric.perform_initial_calculations()
+        #self.parametric.perform_initial_calculations() NOTE: Commented out to run tests individually
 
         # TODO update tests so that each function is passed in stead of relying on perform ini calc method.
         # Test _calc_comp_sides calculations
         self.parametric._calc_comp_sides()
-        expected_result = np.array([14.142, 7.746])  # c_long
-        npt.assert_almost_equal(self.parametric.params['c_long'], expected_result, decimal=3)
-        expected_result = np.array([2.828, 7.746])  # c_short
-        npt.assert_almost_equal(self.parametric.params['c_short'], expected_result, decimal=3)
+        npt.assert_almost_equal(self.parametric.params['c_long'], np.array([14.142, 7.746]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['c_short'], np.array([2.828, 7.746]), decimal=3)
 
-        #Test c_perim
-        expected_result = np.array([33.941, 30.984])
-        npt.assert_almost_equal(self.parametric.params['c_perim'], expected_result, decimal=3)
+        # Test c_perim
+        self.parametric._calc_perimeter()
+        npt.assert_almost_equal(self.parametric.params['c_perim'], np.array([33.941, 30.984]), decimal=3)
 
-        #Test A_t
-        expected_result = np.array([181.823, 243.935])
-        npt.assert_almost_equal(self.parametric.params['A_t'], expected_result, decimal=3)
+        # Test A_t - total enclosure area
+        self.parametric._calc_total_area_enclosure()
+        npt.assert_almost_equal(self.parametric.params['A_t'], np.array([181.823, 243.935]), decimal=3)
 
-        #Test A_v
-        expected_result = np.array([7.637, 46.476])
-        npt.assert_almost_equal(self.parametric.params['A_v'], expected_result, decimal=3)
+        # Test h_w_eq - average window height TODO: Insert average window height expected results
+        self.parametric._calc_average_window_height()
+        #npt.assert_almost_equal(self.parametric.params['h_w_eq'], np.array([, ]), decimal=3)
 
-        #Test Of_max
-        expected_result = np.array([0.051, 0.200])
-        npt.assert_almost_equal(self.parametric.params['Of_max'], expected_result, decimal=3)
+        # Test A_v - total ventilation area
+        self.parametric._calc_total_ventilation_area()
+        npt.assert_almost_equal(self.parametric.params['A_v'], np.array([7.637, 46.476]), decimal=3)
 
-        #Test Of
-        expected_result = np.array([0.051, 0.180])
-        npt.assert_almost_equal(self.parametric.params['Of'], expected_result, decimal=3)
+        # Test Of_max - Max opening factor
+        self.parametric._calc_max_open_factor()
+        npt.assert_almost_equal(self.parametric.params['Of_max'], np.array([0.051, 0.200]), decimal=3)
+        
+        # Test Of - breakage opening factor
+        self.parametric._calc_open_factor_breakage()
+        npt.assert_almost_equal(self.parametric.params['Of'], np.array([0.051, 0.180]), decimal=3)
 
-        #Test q_t_d
-        expected_result = np.array([65.998, 73.790])
-        npt.assert_almost_equal(self.parametric.params['q_t_d'], expected_result, decimal=3)
+        # Test apply open factor limits TODO: Add open factor lmits
+        self.parametric._apply_open_factor_limits()
 
-        #Test Of_lim
-        expected_result = np.array([0.026, 0.022])
-        npt.assert_almost_equal(self.parametric.params['Of_lim'], expected_result, decimal=3)
+        # Test GA - test calc Ga
+        self.parametric._calc_GA_factor()
+        npt.assert_almost_equal(self.parametric.params['GA'], np.array([2.225, 27.248]), decimal=3)
 
-        #Test GA
-        expected_result = np.array([2.225, 27.248])
-        npt.assert_almost_equal(self.parametric.params['GA'], expected_result, decimal=3)
+        # Test q_t_d - total surface area fuel density
+        self.parametric._calc_total_surface_area_fuel_density()
+        npt.assert_almost_equal(self.parametric.params['q_t_d'], np.array([65.998, 73.790]), decimal=3)
 
-        #Test k
-        expected_result = np.array([0.995, 0.991])
-        npt.assert_almost_equal(self.parametric.params['k'], expected_result, decimal=3)
+        # Test t_max_vent - time to max temp for vent controlled fire
+        self.parametric._calc_t_max_vent()
+        npt.assert_almost_equal(self.parametric.params['t_max_vent'], np.array([0.257, 0.082]), decimal=3)
 
-        #Test GA_lim
-        expected_result = np.array([0.583, 0.408])
-        npt.assert_almost_equal(self.parametric.params['GA_lim'], expected_result, decimal=3)
+        # Test t_max_fuel - time to max temp for fuel controlled fire TODO: Add expected t_max_fuel values
+        self.parametric._calc_t_max_fuel()
+        #npt.assert_almost_equal(self.parametric.params['t_max_fuel'], np.array([, ]), decimal=3)
 
-        #Test t_max_vent
-        expected_result = np.array([0.257, 0.082])
-        npt.assert_almost_equal(self.parametric.params['t_max_vent'], expected_result, decimal=3)
+        # Test Of_lim - Open factor for fuel controlled
+        self.parametric._calc_open_factor_fuel()
+        npt.assert_almost_equal(self.parametric.params['Of_lim'],  np.array([0.026, 0.022]), decimal=3)
 
-        #Test regime
-        expected_result = np.array(['V', 'F'])
-        npt.assert_equal(self.parametric.params['regime'], expected_result)
+        # Test k and Test GA_lim - K factor for GA_lim - NOTE: Ga_lim is modified with k
+        self.parametric._calc_GA_lim_factor()
+        self.parametric._calc_GA_lim_k_mod()
+        npt.assert_almost_equal(self.parametric.params['k'], np.array([0.995, 0.991]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['GA_lim'], np.array([0.583, 0.408]), decimal=3)
 
-        #Test max_temp_t
-        expected_result = np.array([0.257, 0.333])
-        npt.assert_almost_equal(self.parametric.params['max_temp_t'], expected_result, decimal=3)
+        # Test burning regime - checking for fuel or vent control
+        self.parametric._define_burning_regime()
+        npt.assert_equal(self.parametric.params['regime'], np.array(['V', 'F']))
 
-        #Test t_star_max
-        expected_result = np.array([0.571, 0.136])
-        npt.assert_almost_equal(self.parametric.params['t_str_max_heat'], expected_result, decimal=3)
+        # Test max_temp_t - time of maximum temperature 
+        self.parametric._calc_max_temp_time()
+        npt.assert_almost_equal(self.parametric.params['max_temp_t'], np.array([0.257, 0.333]), decimal=3)
 
-        #Test max_temp
-        expected_result= np.array([859.632, 665.926])
-        npt.assert_almost_equal(self.parametric.params['max_temp'], expected_result, decimal=3) # does not work with decimals=3 or 665.721
+        # Test t_star_max
+        self.parametric._calc_t_star_max()
+        npt.assert_almost_equal(self.parametric.params['t_str_max_heat'], np.array([0.571, 0.136]), decimal=3)
 
+        # Test max_temp - maximum temperature
+        self.parametric._calc_max_temp()
+        npt.assert_almost_equal(self.parametric.params['max_temp'], np.array([859.632, 665.926]), decimal=3) # does not work with decimals=3 or 665.721
+
+        # Test fire duration - fire duration TODO: Add expected values for fire duration
+        self.parametric._calc_fire_duration()
+        #npt.assert_almost_equal(self.parametric.params['burnout'], np.array([, ]), decimal=3)
+
+        # Test _define_max_gas_temp TODO: Add expected values for max gas temp
+        self.parametric._define_max_gas_temp()
+        #npt.assert_almost_equal(self.parametric.params['max_gas_temp'], np.array([,]), decimal=3)
 
 
 
@@ -143,49 +157,89 @@ class TestUniEC1(unittest.TestCase):
 class TestTravelingISO16733(unittest.TestCase):
     def setUp(self):
         inputs = {
-            'A_c': np.array([]),
-            'h_c': np.array([]),
-            'c_ratio': np.array([]),
-            'q_f_d': np.array([]),
-            'Q': np.array([]),
-            'spr_rate': np.array([]),
-            'flap_angle': np.array([]),
-            'T_nf_max': np.array([])}
+            'A_c': np.array([500,500]),
+            'h_c': np.array([4, 4]),
+            'c_ratio': np.array([0.8, 0.8]),
+            'q_f_d': np.array([570, 570]),
+            'Q': np.array([290, 290]),
+            'spr_rate': np.array([2.544, 2.544]),
+            'flap_angle': np.array([6.5, 0.0]),
+            'T_nf_max': np.array([1200, 1200]),
+            'T_amb': np.array([20, 20])}
         crit_value = 100
+        assess_loc = 0.8
+        max_travel_path = 25
+        max_fire_duration = 1000
 
-        self.traveling = hr.TravelingISO16733(design_fire_inputs=inputs, crit_value=crit_value)
+        self.traveling = hr.TravelingISO16733(
+            design_fire_inputs = inputs,
+            crit_value = crit_value,
+            assess_loc = assess_loc,
+            max_travel_path = max_travel_path,
+            max_fire_duration = max_fire_duration)
 
     def test_perform_initial_calculations(self):
-        self.traveling.perform_initial_calculations()
+        #self.traveling.perform_initial_calculations() NOTE: commented out to test functions individually
+
 
         # TODO rewrite this that each method of intial calculation is tested
+        # Add test cases, add a test case with a flapping angle of zero
 
-        # Test c_long
-        expected_result = np.array([])
-        npt.assert_almost_equal(self.traveling.params['c_long'], expected_result, decimal=3)
+        # Test c_long and c_short
+        self.traveling._calc_comp_sides()
+        npt.assert_almost_equal(self.traveling.params['c_long'], np.array([25.000, 25.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['c_short'], np.array([20.000, 20.000]), decimal=3)
+        
+        # Test x_loc - position along fire path
+        self.traveling._calc_assess_loc()
+        npt.assert_almost_equal(self.traveling.params['x_loc'], np.array([20.000, 20.000]), decimal=3)
 
-        # Test c_short
-        expected_result = np.array([])
-        npt.assert_almost_equal(self.traveling.params['c_short'], expected_result, decimal=3)
+        # Test t_b - fire burning time 
+        self.traveling._calc_burning_time()
+        npt.assert_almost_equal(self.traveling.params['t_b'], np.array([1965.517, 1965.517]), decimal=3)
 
-        # Test t_b (fire burning time)
-        expected_result = np.array([])
-        npt.assert_almost_equal(self.traveling.params['t_b'], expected_result, decimal=3)
+        # Test L_f - fire base length 
+        self.traveling._calc_fire_base_length()
+        npt.assert_almost_equal(self.traveling.params['L_f'], np.array([5.000, 5.000]), decimal=3)
 
-        # Test L_f (
-        expected_result = np.array([])
-        npt.assert_almost_equal(self.traveling.params['L_f'], expected_result, decimal=3)
+        # Test A_f - fire base area 
+        self.traveling._calc_fire_base_area()
+        npt.assert_almost_equal(self.traveling.params['A_f'], np.array([100.006, 100.006]), decimal=3)
+        
+        # Test L_str - Relative fire size 
+        self.traveling._calc_relative_fire_size()
+        npt.assert_almost_equal(self.traveling.params['L_str'], np.array([0.200, 0.200]), decimal=3)
 
-        # Test burnout
-        expected_result = np.array([])
-        npt.assert_almost_equal(self.traveling.params['burnout'], expected_result, decimal=3)
+        # Test burnout - burning time for whole travelling fire path 
+        self.traveling._calc_burnout()
+        npt.assert_almost_equal(self.traveling.params['burnout'], np.array([196.543, 196.543]), decimal=3)
 
-        # Test f
-        expected_result = np.array([])
-        npt.assert_almost_equal(self.traveling.params['f'], expected_result, decimal=3)
+        # Test f - flapping length
+        self.traveling._calc_flap_l()
+        npt.assert_almost_equal(self.traveling.params['f'], np.array([5.912, 5.000]), decimal=3)
+
+        # Test r_0, r_x1, r_x2 - Interim parameter for near field temperature 
+        self.traveling._calc_interim_parameters_for_near_field_temp()
+        npt.assert_almost_equal(self.traveling.params['r_0'], np.array([1.116, 1.116]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['r_x1'], np.array([0.000, 0.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['r_x2'], np.array([2.500, 2.500]), decimal=3)
+
+        # Test T_nf - Average near field temperature
+        self.traveling._calc_average_near_field_temp()
+        npt.assert_almost_equal(self.traveling.params['T_nf'], np.array([1118.458, 1200.000]), decimal=3)
+
+        # Test max_gas_temp - Max gas temperature
+        self.traveling._define_max_gas_temperature()
+        npt.assert_almost_equal(self.traveling.params['max_gas_temp'], np.array([1118.458, 1200.000]), decimal=3)
 
 
+        """ FURTHER WORK """
 
+        # Test amend parameters function
+        # Test get exposure function
+        # Test get time temperature curves function
+        # Check temperatures with as a function of relative position
+        # Far field temperatures?
 
 if __name__ == '__main__':
     unittest.main()
