@@ -134,9 +134,6 @@ class UniEC1(GenericRegime):
     def _calc_max_open_factor(self):
         """See BS EN 1991-1-2 A.2a. UNIT TEST REQUIRED"""
         self.params['Of_max'] = self.params['A_v']*np.sqrt(self.params['h_w_eq'])/self.params['A_t']
-        #   Momoi - added the limits for Of_max
-        self.params['Of_max'][self.params['Of_max'] > 0.2] = 0.2
-        self.params['Of_max'][self.params['Of_max'] < 0.01] = 0.01
 
     def _calc_open_factor_breakage(self):
         """Refer to TGN B4.5.3 and JCSS - 2 Clause 2.20.4.1. UNIT TEST"""
@@ -157,8 +154,6 @@ class UniEC1(GenericRegime):
         self.params['q_t_d'][self.params['q_t_d'] > 1000] = 1000
         self.params['q_t_d'][self.params['q_t_d'] < 50] = 50
 
-        # print("q_t_d: ", self.params['q_t_d'])
-
     def _calc_open_factor_fuel(self):
         """See BS EN 1993-1-2 A.2a UNIT TEST REQUIRED"""    #Of_lim in in BS EN 1993-1-2 A.9 ?
         self.params['Of_lim'] = 0.0001*self.params['q_t_d']/self.params['t_max_fuel']
@@ -168,8 +163,6 @@ class UniEC1(GenericRegime):
     def _calc_GA_factor(self):
         """See BS EN 1993-1-2 A.9 UNIT TEST REQUIRED"""
         self.params['GA'] = ((self.params['Of']/self.params['fabr_inrt'])/(0.04/1160))**2
-
-        # print("GA: ", self.params['GA'])
 
     def _calc_GA_lim_factor(self):
         """See BS EN 1993-1-2 A.8 UNIT TEST REQUIRED"""

@@ -12,7 +12,6 @@ class TestUniEC1(unittest.TestCase):
             'c_ratio': np.array([0.2, 1]),
             'h_c': np.array([3, 4]),
             'w_frac': np.array([0.15, 0.5]),
-            'h_w_eq': np.array([1.5, 3]),
             'remain_frac': np.array([0.0, 0.1]),
             'q_f_d': np.array([300, 300]),
             't_lim': np.array([15, 20]),
@@ -29,9 +28,7 @@ class TestUniEC1(unittest.TestCase):
             Of_limits=Of_limits)
 
     def test_perform_initial_calculations(self):
-        #self.parametric.perform_initial_calculations() NOTE: Commented out to run tests individually
 
-        # TODO update tests so that each function is passed in stead of relying on perform ini calc method.
         # Test _calc_comp_sides calculations
         self.parametric._calc_comp_sides()
         npt.assert_almost_equal(self.parametric.params['c_long'], np.array([14.142, 7.746]), decimal=3)
@@ -45,28 +42,26 @@ class TestUniEC1(unittest.TestCase):
         self.parametric._calc_total_area_enclosure()
         npt.assert_almost_equal(self.parametric.params['A_t'], np.array([181.823, 243.935]), decimal=3)
 
-        # Test h_w_eq - average window height TODO: Insert average window height expected results
+        # Test h_w_eq - average window height
         self.parametric._calc_average_window_height()
-        #npt.assert_almost_equal(self.parametric.params['h_w_eq'], np.array([, ]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['h_w_eq'], np.array([1.500, 3.000]), decimal=3)
 
         # Test A_v - total ventilation area
         self.parametric._calc_total_ventilation_area()
         npt.assert_almost_equal(self.parametric.params['A_v'], np.array([7.637, 46.476]), decimal=3)
 
-        # Test Of_max - Max opening factor
-        self.parametric._calc_max_open_factor()
-        npt.assert_almost_equal(self.parametric.params['Of_max'], np.array([0.051, 0.200]), decimal=3)
-        
         # Test Of - breakage opening factor
+        self.parametric._calc_max_open_factor()
         self.parametric._calc_open_factor_breakage()
-        npt.assert_almost_equal(self.parametric.params['Of'], np.array([0.051, 0.180]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['Of'], np.array([0.051, 0.297]), decimal=3)
 
-        # Test apply open factor limits TODO: Add open factor lmits
+        # Test apply open factor limits
         self.parametric._apply_open_factor_limits()
+        npt.assert_almost_equal(self.parametric.params['Of'], np.array([0.051, self.parametric.Of_limits[1]]), decimal=3)
 
         # Test GA - test calc Ga
         self.parametric._calc_GA_factor()
-        npt.assert_almost_equal(self.parametric.params['GA'], np.array([2.225, 27.248]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['GA'], np.array([2.225, 33.640]), decimal=3)
 
         # Test q_t_d - total surface area fuel density
         self.parametric._calc_total_surface_area_fuel_density()
@@ -74,11 +69,11 @@ class TestUniEC1(unittest.TestCase):
 
         # Test t_max_vent - time to max temp for vent controlled fire
         self.parametric._calc_t_max_vent()
-        npt.assert_almost_equal(self.parametric.params['t_max_vent'], np.array([0.257, 0.082]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['t_max_vent'], np.array([0.257, 0.074]), decimal=3)
 
-        # Test t_max_fuel - time to max temp for fuel controlled fire TODO: Add expected t_max_fuel values
+        # Test t_max_fuel - time to max temp for fuel controlled fire
         self.parametric._calc_t_max_fuel()
-        #npt.assert_almost_equal(self.parametric.params['t_max_fuel'], np.array([, ]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['t_max_fuel'], np.array([0.250, 0.333]), decimal=3)
 
         # Test Of_lim - Open factor for fuel controlled
         self.parametric._calc_open_factor_fuel()
@@ -104,15 +99,15 @@ class TestUniEC1(unittest.TestCase):
 
         # Test max_temp - maximum temperature
         self.parametric._calc_max_temp()
-        npt.assert_almost_equal(self.parametric.params['max_temp'], np.array([859.632, 665.926]), decimal=3) # does not work with decimals=3 or 665.721
+        npt.assert_almost_equal(self.parametric.params['max_temp'], np.array([859.632, 665.721]), decimal=3)
 
         # Test fire duration - fire duration TODO: Add expected values for fire duration
         self.parametric._calc_fire_duration()
-        #npt.assert_almost_equal(self.parametric.params['burnout'], np.array([, ]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['burnout'], np.array([52.676, 24.607]), decimal=3)
 
-        # Test _define_max_gas_temp TODO: Add expected values for max gas temp
+        # Test _define_max_gas_temp - for external class use
         self.parametric._define_max_gas_temp()
-        #npt.assert_almost_equal(self.parametric.params['max_gas_temp'], np.array([,]), decimal=3)
+        npt.assert_almost_equal(self.parametric.params['max_gas_temp'], np.array([859.632, 665.721]), decimal=3)
 
 
 
