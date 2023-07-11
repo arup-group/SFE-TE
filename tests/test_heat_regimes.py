@@ -8,15 +8,16 @@ class TestUniEC1(unittest.TestCase):
 
     def setUp(self):
         inputs = {
-            'A_c': np.array([40, 60]),
-            'c_ratio': np.array([0.2, 1]),
-            'h_c': np.array([3, 4]),
-            'w_frac': np.array([0.15, 0.5]),
-            'remain_frac': np.array([0.0, 0.1]),
-            'q_f_d': np.array([300, 300]),
-            't_lim': np.array([15, 20]),
-            'w_frac_h': np.array([0.5, 0.75]),
-            'fabr_inrt' : np.array([1000, 1000])}
+            'A_c': np.array([40, 60, 1000]),
+            'c_ratio': np.array([0.2, 1, 0]),
+            'h_c': np.array([3, 4, 0]),
+            'w_frac': np.array([0.15, 0.5, 0]),
+            'remain_frac': np.array([0.0, 0.1, 0]),
+            'q_f_d': np.array([300, 300, 0]),
+            't_lim': np.array([15, 20, 0]),
+            'w_frac_h': np.array([0.5, 0.75, 0]),
+            'fabr_inrt' : np.array([1000, 1000, 0]),
+            'foo': np.array([1000, 1000, 0])}
         crit_value = 100
         Of_limits = [0.02, 0.2]
         max_fire_duration = 1000
@@ -26,6 +27,14 @@ class TestUniEC1(unittest.TestCase):
             crit_value=crit_value,
             max_fire_duration=max_fire_duration,
             Of_limits=Of_limits)
+
+    def test_get_relevant_design_fire_indeces(self):
+        npt.assert_equal(self.parametric.relevent_df_indices, np.array([0, 1]))
+        self.assertFalse(self.parametric.is_empty, 'Issue with empty method definition')
+
+    def test_get_parameters(self):
+        self.assertFalse('foo' in self.parametric.params)
+        self.assertEqual(len(self.parametric.params), 9)
 
     def test_perform_initial_calculations(self):
 
@@ -147,6 +156,8 @@ class TestUniEC1(unittest.TestCase):
     #         _, _, cool_phase_temp = self.parametric.get_exposure(t)
     #
     #         npt.assert_almost_equal(cool_phase_temp, expected_result, err_msg=f"error at t = {t}", decimal=0)
+
+    #TODO check bad samples - to be updated once such tests are created
 
 
 class TestTravelingISO16733(unittest.TestCase):
