@@ -308,7 +308,7 @@ class UniEC1(GenericRegime):
         heat_phase_temp = self._calc_heat_phase_temp(t_str_heat)
         cool_phase_temp = self._calc_cooling_phase_temp(t, sub_params)
 
-        return np.min([heat_phase_temp, cool_phase_temp], axis=0), t_str_heat, cool_phase_temp   # added t_str_heat, cool phase temp to retun for testing
+        return np.min([heat_phase_temp, cool_phase_temp], axis=0)
 
     def get_time_temperature_curves(self, t_values, subsample_mask):
         """Get time temperature curves"""

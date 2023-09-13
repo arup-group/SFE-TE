@@ -120,12 +120,25 @@ class TestUniEC1(unittest.TestCase):
         npt.assert_almost_equal(self.parametric.params['max_gas_temp'], np.array([859.632, 665.721, 1331.519, 1075.543]), decimal=3)
 
     def test_get_exposure(self):
-        # test get exposure method with the following times: 0, 5, 30, 60, 10000
-        # test subsample masking with few numbers
-        pass
+        self.parametric.perform_initial_calculations()
 
+        # Test t=0 min
+        answ = self.parametric.get_exposure(t=0, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 20]), decimal=3)
+        # Test t=20 min
+        answ = self.parametric.get_exposure(t=20, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([755.939, 665.721, 1318.065, 826.316]), decimal=3)
+        # Test t=40 min
+        answ = self.parametric.get_exposure(t=40, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([305.49, 20, 20, 927.386]), decimal=3)
+        # Test t=400 min
+        answ = self.parametric.get_exposure(t=400, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 20]), decimal=3)
 
-    #TODO check bad samples - to be updated once such tests are created
+        # Test subsample masking
+        answ = self.parametric.get_exposure(t=40, subsample_mask=[True, False, False, True])
+        npt.assert_almost_equal(answ, np.array([305.49, 927.386]), decimal=3)
+
 
 
 class TestTravelingISO16733(unittest.TestCase):
