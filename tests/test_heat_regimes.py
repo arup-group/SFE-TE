@@ -140,84 +140,87 @@ class TestUniEC1(unittest.TestCase):
         npt.assert_almost_equal(answ, np.array([305.49, 927.386]), decimal=3)
 
 
-
 class TestTravelingISO16733(unittest.TestCase):
     def setUp(self):
         inputs = {
-            'A_c': np.array([500,500]),
-            'h_c': np.array([4, 4]),
-            'c_ratio': np.array([0.8, 0.8]),
-            'q_f_d': np.array([570, 570]),
-            'Q': np.array([290, 290]),
-            'spr_rate': np.array([2.544, 2.544]),
-            'flap_angle': np.array([6.5, 0.0]),
-            'T_nf_max': np.array([1200, 1200]),
-            'T_amb': np.array([20, 20])}
+            'A_c': np.array([20, 500, 1800, 5000, 1200]),
+            'h_c': np.array([4, 4, 3, 4.5, 4.5]),
+            'c_ratio': np.array([0.8, 0.8, 0.5, 0.5, 0.75]),
+            'q_f_d': np.array([570, 570, 150, 600, 400]),
+            'Q': np.array([290, 290, 550, 150, 150]),
+            'spr_rate': np.array([2.544, 2.544, 10, 1.5, 16]),
+            'flap_angle': np.array([6.5, 6.5, 5, 6.5, 5]),
+            'T_nf_max': np.array([1200, 1200, 1200, 1100, 1100]),
+            'T_amb': np.array([20, 20, 20, 20, 20]),
+            'foo': np.array([20, 20, 20, 20, 20])}
         crit_value = 100
         assess_loc = 0.8
-        max_travel_path = 25
+        max_travel_path = 80
         max_fire_duration = 1000
 
         self.traveling = hr.TravelingISO16733(
-            design_fire_inputs = inputs,
-            crit_value = crit_value,
-            assess_loc = assess_loc,
-            max_travel_path = max_travel_path,
-            max_fire_duration = max_fire_duration)
+            design_fire_inputs=inputs,
+            crit_value=crit_value,
+            assess_loc=assess_loc,
+            max_travel_path=max_travel_path,
+            max_fire_duration=max_fire_duration)
+
+    def test_get_relevant_design_fire_indeces(self):
+        npt.assert_equal(self.traveling.relevent_df_indices, np.array([1, 2, 3, 4]))
+        self.assertFalse(self.traveling.is_empty, 'Issue with empty method definition')
+
+    def test_get_parameters(self):
+        self.assertFalse('foo' in self.traveling.params)
+        self.assertEqual(len(self.traveling.params), 9)
 
     def test_perform_initial_calculations(self):
-        #self.traveling.perform_initial_calculations() NOTE: commented out to test functions individually
-
-
-        # TODO rewrite this that each method of intial calculation is tested
-        # Add test cases, add a test case with a flapping angle of zero
 
         # Test c_long and c_short
         self.traveling._calc_comp_sides()
-        npt.assert_almost_equal(self.traveling.params['c_long'], np.array([25.000, 25.000]), decimal=3)
-        npt.assert_almost_equal(self.traveling.params['c_short'], np.array([20.000, 20.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['c_long'], np.array([25.000, 60.000, 80.000, 40.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['c_short'], np.array([20.000, 30.000, 40.000, 30.000]), decimal=3)
         
         # Test x_loc - position along fire path
         self.traveling._calc_assess_loc()
-        npt.assert_almost_equal(self.traveling.params['x_loc'], np.array([20.000, 20.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['x_loc'], np.array([20.000, 48.000, 64.000, 32.000]), decimal=3)
 
         # Test t_b - fire burning time 
         self.traveling._calc_burning_time()
-        npt.assert_almost_equal(self.traveling.params['t_b'], np.array([1965.517, 1965.517]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['t_b'], np.array([1965.517, 272.727, 4000, 2666.667]), decimal=3)
 
         # Test L_f - fire base length 
         self.traveling._calc_fire_base_length()
-        npt.assert_almost_equal(self.traveling.params['L_f'], np.array([5.000, 5.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['L_f'], np.array([5.000, 2.727, 6.000, 42.667]), decimal=3)
 
         # Test A_f - fire base area 
         self.traveling._calc_fire_base_area()
-        npt.assert_almost_equal(self.traveling.params['A_f'], np.array([100.006, 100.006]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['A_f'], np.array([100.006, 81.818, 240.000, 1280]), decimal=3)
         
         # Test L_str - Relative fire size 
         self.traveling._calc_relative_fire_size()
-        npt.assert_almost_equal(self.traveling.params['L_str'], np.array([0.200, 0.200]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['L_str'], np.array([0.200, 0.045, 0.075, 1.067]), decimal=3)
 
         # Test burnout - burning time for whole travelling fire path 
         self.traveling._calc_burnout()
-        npt.assert_almost_equal(self.traveling.params['burnout'], np.array([196.543, 196.543]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['burnout'], np.array([196.543, 104.545, 955.556, 86.111]), decimal=3)
 
         # Test f - flapping length
         self.traveling._calc_flap_l()
-        npt.assert_almost_equal(self.traveling.params['f'], np.array([5.912, 5.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['f'], np.array([5.912, 3.252, 7.025, 43.454]), decimal=3)
 
         # Test r_0, r_x1, r_x2 - Interim parameter for near field temperature 
         self.traveling._calc_interim_parameters_for_near_field_temp()
-        npt.assert_almost_equal(self.traveling.params['r_0'], np.array([1.116, 1.116]), decimal=3)
-        npt.assert_almost_equal(self.traveling.params['r_x1'], np.array([0.000, 0.000]), decimal=3)
-        npt.assert_almost_equal(self.traveling.params['r_x2'], np.array([2.500, 2.500]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['r_0'], np.array([1.116, 2.666, 1.326, 7.072]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['r_x1'], np.array([0.000, 1.302, 0, 0]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['r_x2'], np.array([2.500, 2.666, 3, 21.333]), decimal=3)
 
         # Test T_nf - Average near field temperature
         self.traveling._calc_average_near_field_temp()
-        npt.assert_almost_equal(self.traveling.params['T_nf'], np.array([1118.458, 1200.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['T_nf'], np.array([1118.458, 1072.780, 1029.063, 1089.746]), decimal=3)
 
         # Test max_gas_temp - Max gas temperature
         self.traveling._define_max_gas_temperature()
-        npt.assert_almost_equal(self.traveling.params['max_gas_temp'], np.array([1118.458, 1200.000]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['max_gas_temp'], np.array([1118.458, 1072.780, 1029.063, 1089.746]), decimal=3)
 
 
         """ FURTHER WORK """
