@@ -1,5 +1,9 @@
 import unittest
-import src.heat_transfer_models as hrm
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../src")
+
+import src.equivalence_methods as hrm
 
 
 class TestHeatTransfer(unittest.TestCase):
