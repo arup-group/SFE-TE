@@ -232,6 +232,35 @@ class TestTravelingISO16733(unittest.TestCase):
         npt.assert_almost_equal(self.traveling.params['x_loc'][4], np.array([45.866]), decimal=3)
         npt.assert_almost_equal(self.traveling.params['L_str'][4], np.array([0.047]), decimal=3)
 
+    def test_get_exposure(self):
+        self.traveling.perform_initial_calculations()
+        self.traveling.check_bad_samples()
+
+        # Test t=0 min
+        answ = self.traveling.get_exposure(t=0, x_rel_loc=0.1,  subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([1118.458, 20, 20, 1089.746, 20]), decimal=3)
+        answ = self.traveling.get_exposure(t=0, x_rel_loc=0.5, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 1089.746, 20]), decimal=3)
+        answ = self.traveling.get_exposure(t=0, x_rel_loc=0.9, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 20, 20]), decimal=3)
+
+        # Test t=100 min
+        answ = self.traveling.get_exposure(t=100, x_rel_loc=0.1, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([288.821, 181.54, 1029.063, 20, 1200]), decimal=3)
+        answ = self.traveling.get_exposure(t=100, x_rel_loc=0.5, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([1118.458, 262.395, 144.199, 20, 77.477]), decimal=3)
+        answ = self.traveling.get_exposure(t=100, x_rel_loc=0.9, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([298.449, 835.989, 99.813, 20, 56.755]), decimal=3)
+
+        # Test t=1001 min
+        answ = self.traveling.get_exposure(t=1001, x_rel_loc=0.1, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 20, 20]), decimal=3)
+        answ = self.traveling.get_exposure(t=1001, x_rel_loc=0.5, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 20, 20]), decimal=3)
+        answ = self.traveling.get_exposure(t=1001, x_rel_loc=0.9, subsample_mask=None)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 20, 20]), decimal=3)
+
+
 
         """ FURTHER WORK """
 
