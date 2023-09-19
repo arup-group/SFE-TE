@@ -260,15 +260,9 @@ class TestTravelingISO16733(unittest.TestCase):
         answ = self.traveling.get_exposure(t=1001, x_rel_loc=0.9, subsample_mask=None)
         npt.assert_almost_equal(answ, np.array([20, 20, 20, 20, 20]), decimal=3)
 
-
-
-        """ FURTHER WORK """
-
-        # Test amend parameters function
-        # Test get exposure function
-        # Test get time temperature curves function
-        # Check temperatures with as a function of relative position
-        # Far field temperatures?
+        # est t=100 min with subsample mask
+        answ = self.traveling.get_exposure(t=100, x_rel_loc=0.5, subsample_mask=[True, False, False, False, True])
+        npt.assert_almost_equal(answ, np.array([1118.458,  77.477]), decimal=3)
 
 if __name__ == '__main__':
     unittest.main()
