@@ -72,6 +72,7 @@ class UniEC1(GenericRegime):
             print(f'No design fires associated with {UniEC1.NAME} methodology.')
 
     def _get_parameters(self, design_fire_inputs):
+
         """Samples only revenat data from design fires based on criteria. UNITE TEST REQUIRED"""
         for param in UniEC1.REQUIRED_PARAMS:
             try:
@@ -79,7 +80,6 @@ class UniEC1(GenericRegime):
             except KeyError:
                 print(f'Missing input parameter for {UniEC1.NAME} methodology: {param}')
                 raise KeyError
-
 
 
     def perform_initial_calculations(self):
@@ -143,6 +143,7 @@ class UniEC1(GenericRegime):
         """Applies limits to Of for EC1 methodology which are user defined.
         See BS EN 1991-1-2 A.2a and  PD 6688-1-2:2007 Section 3.1.2(d)
         UNIT TEST REQUIRED"""
+
         self.params['Of'][self.params['Of'] > self.Of_limits[1]] = self.Of_limits[1]
         self.params['Of'][self.params['Of'] < self.Of_limits[0]] = self.Of_limits[0]
 
@@ -154,8 +155,10 @@ class UniEC1(GenericRegime):
         self.params['q_t_d'][self.params['q_t_d'] < 50] = 50
 
     def _calc_open_factor_fuel(self):
-        """See BS EN 1993-1-2 A.2a UNIT TEST REQUIRED"""
+        """See BS EN 1993-1-2 A.2a UNIT TEST REQUIRED"""    #Of_lim in in BS EN 1993-1-2 A.9 ?
         self.params['Of_lim'] = 0.0001*self.params['q_t_d']/self.params['t_max_fuel']
+
+        # print("Of_lim: ", self.params['Of_lim'])
 
     def _calc_GA_factor(self):
         """See BS EN 1993-1-2 A.9 UNIT TEST REQUIRED"""
@@ -165,12 +168,17 @@ class UniEC1(GenericRegime):
         """See BS EN 1993-1-2 A.8 UNIT TEST REQUIRED"""
         self.params['GA_lim'] = ((self.params['Of_lim']/self.params['fabr_inrt'])/(0.04/1160))**2
 
+
     def _calc_GA_lim_k_mod(self):
         """See BS EN 1993-1-2 A.10 UNIT TEST REQUIRED"""
         self.params['k'] = np.ones_like(self.params['GA_lim'])
+
         #Apply criteria from BS EN 1991-1-2 A.9
         crit = (self.params['Of'] > 0.04) & (self.params['q_t_d'] < 75) & (self.params['fabr_inrt'] < 1160)
-        self.params['k'][crit] = 1 + ((self.params['Of'][crit]-0.04)/0.04) * ((self.params['q_t_d'][crit]-75)/75) * ((1160 - self.params['fabr_inrt'][crit])/1160)
+        self.params['k'][crit] = 1 + ((self.params['Of'][crit]-0.04)/0.04) * \
+                                 ((self.params['q_t_d'][crit]-75)/75) *\
+                                 ((1160 - self.params['fabr_inrt'][crit])/1160)
+
         self.params['GA_lim'] = self.params['GA_lim']*self.params['k']
 
     def _calc_t_max_vent(self):
@@ -223,7 +231,6 @@ class UniEC1(GenericRegime):
 
     def _calc_cooling_phase_temp(self, t, sub_params):
         """Calculates cooling phase temperatures in accordance with BS EN 1991-1-2 Annex A (11)
-
         Inputs:
             t (array like): time vector in [min - TBC]
             sub_params (dict): subsample of parameters to be used for calculation. This is controlled from
@@ -293,6 +300,7 @@ class UniEC1(GenericRegime):
         t_str_heat[crit] = sub_params['GA'][crit] * t/60
         crit = sub_params['regime'] == 'F'
         t_str_heat[crit] = sub_params['GA_lim'][crit] * t/60
+
 
         #Calculate heating and colling temperatures. These are compared to avoid discontinuities
         # The logic is that if t_str is smaller than t_max_str the resulting temp will allways be bigger
@@ -420,7 +428,7 @@ class TravelingISO16733(GenericRegime):
         self.params['t_b'] = 1000*self.params['q_f_d']/self.params['Q']
 
     def _calc_fire_base_length(self):
-        """Calculates burning time for individual segment. See TGN C2"""
+        """Calculates the maximum dimension of the fire base. See TGN C2 - C3.2"""
         self.params['L_f'] = self.params['spr_rate'] * self.params['t_b']/1000
 
     def _calc_fire_base_area(self):
