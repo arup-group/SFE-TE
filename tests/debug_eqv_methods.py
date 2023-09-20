@@ -2,7 +2,7 @@
 
 import sys
 if '..' not in sys.path:
-    sys.path.insert(0, '..')
+    sys.path.insert(0, '../src')
 from src import equivalence_methods as em
 from src import configs as cfg
 import matplotlib.pyplot as plt
