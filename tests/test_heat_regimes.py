@@ -111,7 +111,7 @@ class TestUniEC1(unittest.TestCase):
         self.parametric._calc_max_temp()
         npt.assert_almost_equal(self.parametric.params['max_temp'], np.array([859.632, 665.721, 1331.519, 1075.543]), decimal=3)
 
-        # Test fire duration - fire duration TODO: Add expected values for fire duration
+        # Test fire duration - fire duration
         self.parametric._calc_fire_duration()
         npt.assert_almost_equal(self.parametric.params['burnout'], np.array([52.676, 24.607, 25.842, 295.837]), decimal=3)
 

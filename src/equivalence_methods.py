@@ -60,7 +60,6 @@ class SteelEC3(GenericHT):
         self.limiting_factor = self.T_lim
 
         # TODO create interpolate prot_thickness wrapper to give warnings when extrapolating
-        # TODO create protection thickness plot and graph
 
     def _process_sample_section_geometry(self, sect_prop):
         """Return section factor which is needed for heat transfer calculation
@@ -198,7 +197,7 @@ class SteelEC3(GenericHT):
 
         Inputs:
             exposure_fxn(method): exposure function defining the gas temperature at different points in time. It must
-            be of the form f(t, *args) where t is the time. Return value to be in (degC)
+            be of the form f(t, *args) where t is the time in MINUTES. Return value to be in (degC)
             equiv_exp (float): equivalent exposure rating used to calculate appropriate protection thickness
             t_final (float): end analysis time
             sample_size (int): sample size
@@ -241,7 +240,7 @@ class SteelEC3(GenericHT):
             c_a = self._calc_steel_hc(T_m_red)
             ro_a = SteelEC3._calc_steel_dens()
 
-            #TODO ENSURE CONSISTENT TIMES
+            # NOTE - EXPOSURE FUNCTION TIMES ARE IN MINUTES
             T_g = exposure_fxn((t+self.dt)/60, subsample_mask=to_compute)
             T_g_prev= exposure_fxn(t/60, subsample_mask=to_compute)
 

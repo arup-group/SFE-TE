@@ -546,6 +546,7 @@ class AssessmentCase:
         self._plot_inputs(
             list_of_inputs=['q_f_d', 'Q', 't_lim', 'spr_rate', 'flap_angle', 'T_nf_max', 'T_amb'],
             filename='fire_params')
+        #TODO Plot interim distributions data for QA
         self._plot_convergence_study()
         self._plot_max_el_temp_duration_quick()
 
