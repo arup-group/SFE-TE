@@ -781,7 +781,7 @@ class CaseControler:
             print(f'Undertaken iterations: {self.case.optm_result.nfev}. Convergence status: {self.case.outputs["success_conv"]}')
             print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, 95 % confidence interval: {self.case.outputs["eqv_req_conf"].round(1)}\n')
             self.case_reports.append(self.case.report_to_main())
-            if i == 5:
+            if i == 1000:
                 print(f'Maximum limit of {i+1} cases for Study A exceeded.')
                 break
         self._summarise_run(which='run_a')
