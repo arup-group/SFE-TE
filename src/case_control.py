@@ -762,31 +762,28 @@ class CaseControler:
         print(f'Commencing Study A comprising of {len(self.cases)} cases.\n')
 
         for i, case_ID in enumerate(self.cases):
-            try:
-                print(f'{i+1}/{len(self.cases)}. Analysing case {case_ID}_{self.cases[case_ID]["label"]}.')
-                self.case = AssessmentCase(
-                    name=self.cases[case_ID]['label'],
-                    ID=case_ID,
-                    input_defs=self.cases[case_ID]['params'],
-                    risk_model=self.risk_method,
-                    mc_engine=self.mc_method,
-                    ht_model=self.eqv_method,
-                    heating_regimes_inputs=self.inputs['heating_regimes'],
-                    save_loc=os.path.join(self.out_f, 'run_a'),
-                    analysis_type=self.inputs['run_a_setup'],
-                    sample_size=self.inputs['run_a_sample_size'],
-                    bootstrap_rep=self.inputs['bootstrap_rep'])
-                print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
-                self.case.run_analysis()
-                print(f'Analysis for {self.case.name} completed in {self.case.outputs["time"]:.1f} s. Convergence status: {self.case.outputs["success_conv"]}')
-                print(f'Undertaken iterations: {self.case.optm_result.nfev}. Convergence status: {self.case.outputs["success_conv"]}')
-                print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, 95 % confidence interval: {self.case.outputs["eqv_req_conf"].round(1)}\n')
-                self.case_reports.append(self.case.report_to_main())
-                if i == 1000:
-                    print(f'Maximum limit of {i+1} cases for Study A exceeded.')
-                    break
-            except:
-                pass
+            print(f'{i+1}/{len(self.cases)}. Analysing case {case_ID}_{self.cases[case_ID]["label"]}.')
+            self.case = AssessmentCase(
+                name=self.cases[case_ID]['label'],
+                ID=case_ID,
+                input_defs=self.cases[case_ID]['params'],
+                risk_model=self.risk_method,
+                mc_engine=self.mc_method,
+                ht_model=self.eqv_method,
+                heating_regimes_inputs=self.inputs['heating_regimes'],
+                save_loc=os.path.join(self.out_f, 'run_a'),
+                analysis_type=self.inputs['run_a_setup'],
+                sample_size=self.inputs['run_a_sample_size'],
+                bootstrap_rep=self.inputs['bootstrap_rep'])
+            print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
+            self.case.run_analysis()
+            print(f'Analysis for {self.case.name} completed in {self.case.outputs["time"]:.1f} s. Convergence status: {self.case.outputs["success_conv"]}')
+            print(f'Undertaken iterations: {self.case.optm_result.nfev}. Convergence status: {self.case.outputs["success_conv"]}')
+            print(f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, 95 % confidence interval: {self.case.outputs["eqv_req_conf"].round(1)}\n')
+            self.case_reports.append(self.case.report_to_main())
+            if i == 1000:
+                print(f'Maximum limit of {i+1} cases for Study A exceeded.')
+                break
         self._summarise_run(which='run_a')
         self._plot_summary_bars(which='run_a')
         if self.inputs['run_a_setup'] == 'full':

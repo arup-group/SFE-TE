@@ -434,7 +434,8 @@ class TravelingISO16733(GenericRegime):
     def _calc_fire_base_area(self):
         """Calculates fire base area. See TGN C2 - p.C3"""
         self.params['A_f'] = self.params['L_f']*self.params['c_short']
-        self.params['A_f'][self.params['A_f'] > self.params['A_c']] = self.params['A_c'] # Fire area cannot be more than compartment area
+        crit = self.params['A_f'] > self.params['A_c']
+        self.params['A_f'][crit] = self.params['A_c'][crit] # Fire area cannot be more than compartment area
 
     def _calc_relative_fire_size(self):
         """Calculates relative fire size - ratio of fire base to total length of the fire path"""
