@@ -1,0 +1,75 @@
+<workflow>
+    <activity>
+	<module>
+	  <moduleInstanceName>export-private</moduleInstanceName>
+          <moduleInstanceVersion>latest</moduleInstanceVersion>
+              <moduleInstanceArguments>
+	         <unzip>false</unzip>
+              </moduleInstanceArguments>
+	</module>
+        <module>
+	      <moduleInstanceName>export-models</moduleInstanceName>
+              <moduleInstanceVersion>latest</moduleInstanceVersion>
+              <moduleInstanceArguments>
+              <exportActivities>
+                    <exportModel>
+	                 <url>https://github.com/arup-group/SFE-TE/archive/refs/tags/te_v0.1.0-awf.tar.gz</url>
+		         <path>te_010_awf</path>
+		         <unzip>true</unzip>
+                     </exportModel>
+                </exportActivities>
+            </moduleInstanceArguments>
+	</module>
+        <module>
+          <moduleInstanceName>python</moduleInstanceName>
+                  <moduleInstanceVersion>latest</moduleInstanceVersion>
+                  <moduleInstanceArguments>
+                     <version>3.8</version>
+                     <script>te_010_awf/te_awf_start.py</script>
+                     <requirements>te_010_awf/requirements.txt</requirements>
+                     <exeArgs>
+                      <arg>-i</arg>
+                      <arg>%rootDir%/input/%inputfile%</arg>
+                      <arg>-o</arg>
+                      <arg>%rootDir%/work</arg>
+                     </exeArgs>
+                     <timeout>7200</timeout>
+                     <qa_group>Fire</qa_group>
+                     <logs_zipfile_name>Assessment_Logs</logs_zipfile_name>
+                     <log_files></log_files>
+                     <results_zipfile_name>Assessment_Results</results_zipfile_name>
+                     <result_files>
+                         <file>%rootDir%/work/*</file>
+                     </result_files>
+
+                  </moduleInstanceArguments>
+        </module>
+
+    </activity>
+</workflow>
+
+[{
+        "demo": "integration_test",
+        "name": "object_id",
+        "type": "string",
+        "label": "Workflow Run Name",
+        "default": "",
+        "required": true,
+        "description": "Add a name to your workflow"},
+        {"demo": "",
+        "name": "inputfile",
+        "type": "file",
+        "label": "Input file",
+        "default": "", "required": true,
+        "properties": {"extension": [".json"]},
+        "description": "A text file to run tutorial workflow on"}]
+
+
+{"demo": "demo-files/dwh-bid-information/input.xlsx",
+        "name": "file",
+        "type": "file",
+        "label": "Excel File",
+        "default": "",
+        "required": true,
+        "properties": {"extension": [".xlsx", ".xlsm", ".xlsb"]},
+        "description": "The Excel file with the address ID information (.xlsx, .xlsm, .xlsb format). Make sure the filename doesn't contain any spaces"},
