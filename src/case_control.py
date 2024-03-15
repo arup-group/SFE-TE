@@ -777,7 +777,7 @@ class CaseControler:
                 bootstrap_rep=self.inputs['bootstrap_rep'])
             print(f'Case {self.case.ID}_{self.case.name} initialised successfully.')
             self.case.run_analysis()
-
+            
             if self.case.analysis_type == "quick":
                 print(f'Analysis for {self.case.name} completed in {self.case.outputs["time"]:.1f} s. Convergence status: {self.case.outputs["success_conv"]}')
                 print(f'Undertaken iterations: {self.case.optm_result.nfev}. Convergence status: {self.case.outputs["success_conv"]}')
@@ -786,11 +786,12 @@ class CaseControler:
                 print(f'Analysis for {self.case.name} completed. Convergence status: {self.case.outputs["success_conv"]}')
                 print(
                     f'Assessed equivalence: {self.case.outputs["eqv_req"]:.0f}, conf: {self.case.outputs["eqv_req_conf"].round(1)}\n')
-
             self.case_reports.append(self.case.report_to_main())
+            
             if i == 1000:
                 print(f'Maximum limit of {i+1} cases for Study A exceeded.')
                 break
+                
         self._summarise_run(which='run_a')
         self._plot_summary_bars(which='run_a')
         if self.inputs['run_a_setup'] == 'full':
