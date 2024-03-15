@@ -1,6 +1,20 @@
+IF YOU HAVE MINCONDA INSTALLED:
+
 Install the python environment  fire_general from this foldrt using the miniconda client or the shell:
 
 conda env create -f fire_general.yml
+
+if you are blocked by the arup security system update the certificate as per https://arup.sharepoint.com/sites/network-software-development/SitePages/SSL-Certificates.aspx:
+
+conda config --set ssl_verify "c:\\ProgramData\\Arup\\Certificates\\curl-ca-bundle.crt"
+
+
+
+IF YOU HAVE CONDA FORGE INSTALLED:
+
+Install the python environment  fire_general from this foldrt using the miniconda client or the shell:
+
+conda env create -f fire_general_forge.yml
 
 if you are blocked by the arup security system update the certificate as per https://arup.sharepoint.com/sites/network-software-development/SitePages/SSL-Certificates.aspx:
 

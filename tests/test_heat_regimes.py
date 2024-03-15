@@ -142,8 +142,6 @@ class TestUniEC1(unittest.TestCase):
 
 class TestTravelingISO16733(unittest.TestCase):
 
-    # TODO UPDATE TESTS AS PER LATEST CORRECTIONS 20/02/2024
-
     def setUp(self):
         inputs = {
             'A_c': np.array([20, 500, 1800, 5000, 1200, 1600]),

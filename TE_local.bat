@@ -5,7 +5,7 @@ echo[
 set /p "inputFile=Enter path to input file: "
 set /p "outputDir=Enter path to output directory: "
 echo[
-call conda activate fire_general_forge
+call conda activate fire_general
 python src/main.py -i %inputFile% -o %outputDir%
 call conda deactivate
 pause
