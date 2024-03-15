@@ -434,6 +434,8 @@ class TravelingISO16733(GenericRegime):
     def _calc_fire_base_area(self):
         """Calculates fire base area. See TGN C2 - p.C3"""
         self.params['A_f'] = self.params['L_f']*self.params['c_short']
+        crit = self.params['A_f'] > self.params['A_c']
+        self.params['A_f'][crit] = self.params['A_c'][crit] # Fire area cannot be more than compartment area
 
     def _calc_relative_fire_size(self):
         """Calculates relative fire size - ratio of fire base to total length of the fire path"""
@@ -454,6 +456,13 @@ class TravelingISO16733(GenericRegime):
         self.params['r_0'] = self.params['Q'] * self.params['A_f'] * (5.38 / (self.params['h_c'] * (self.params['T_nf_max'] - self.params['T_amb']))) ** (3 / 2)
         self.params['r_x1'] = np.max([np.zeros(len(self.params['A_c'])), self.params['r_0'] - 0.5 * self.params['L_f']],axis=0)
         self.params['r_x2'] = np.max([0.5 * self.params['L_f'], self.params['r_0']], axis=0)
+
+        #Apply limitations to r_x1 and r_x2 so they are always within the flapping flame lenght
+        crit = self.params['r_x1'] > 0.5 * self.params['f'] - 0.5 * self.params['L_f']
+        self.params['r_x1'][crit] = 0.5 * self.params['f'][crit] - 0.5 * self.params['L_f'][crit]
+
+        crit = self.params['r_x2'] > 0.5 * self.params['f']
+        self.params['r_x2'][crit] = 0.5 * self.params['f'][crit]
 
     def _calc_average_near_field_temp(self):
         """Estimates average near field temperature considering flapping angle and heat release rate.
@@ -523,7 +532,7 @@ class TravelingISO16733(GenericRegime):
 
         #Calculate  position condition
         dist = np.absolute(sub_params['x_loc'] + 0.5*L_str_t*sub_params['c_long'] - x_str_t)
-        crit = dist > 0.5*sub_params['L_f']
+        crit = dist > 0.5*L_str_t*sub_params['c_long'] - 0.0001 # reflects error in ISO16733. See TGN and unit tests guide
 
         #Calculate temperature
         T_exp = np.zeros(len(sub_params['A_c']), dtype=np.float64)

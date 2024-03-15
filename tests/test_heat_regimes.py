@@ -141,6 +141,9 @@ class TestUniEC1(unittest.TestCase):
 
 
 class TestTravelingISO16733(unittest.TestCase):
+
+    # TODO UPDATE TESTS AS PER LATEST CORRECTIONS 20/02/2024
+
     def setUp(self):
         inputs = {
             'A_c': np.array([20, 500, 1800, 5000, 1200, 1600]),
@@ -194,7 +197,7 @@ class TestTravelingISO16733(unittest.TestCase):
 
         # Test A_f - fire base area 
         self.traveling._calc_fire_base_area()
-        npt.assert_almost_equal(self.traveling.params['A_f'], np.array([100.006, 81.818, 240.000, 1280, 53.333]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['A_f'], np.array([100.006, 81.818, 240.000, 1200, 53.333]), decimal=3)
         
         # Test L_str - Relative fire size 
         self.traveling._calc_relative_fire_size()
@@ -210,17 +213,17 @@ class TestTravelingISO16733(unittest.TestCase):
 
         # Test r_0, r_x1, r_x2 - Interim parameter for near field temperature 
         self.traveling._calc_interim_parameters_for_near_field_temp()
-        npt.assert_almost_equal(self.traveling.params['r_0'], np.array([1.116, 2.666, 1.326, 7.072, 0.258]), decimal=3)
-        npt.assert_almost_equal(self.traveling.params['r_x1'], np.array([0.000, 1.302, 0, 0, 0]), decimal=3)
-        npt.assert_almost_equal(self.traveling.params['r_x2'], np.array([2.500, 2.666, 3, 21.333, 1.333]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['r_0'], np.array([1.116, 2.666, 1.326, 6.630, 0.258]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['r_x1'], np.array([0.000, 0.262, 0, 0, 0]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['r_x2'], np.array([2.500, 1.626, 3, 21.333, 1.333]), decimal=3)
 
         # Test T_nf - Average near field temperature
         self.traveling._calc_average_near_field_temp()
-        npt.assert_almost_equal(self.traveling.params['T_nf'], np.array([1118.458, 1072.780, 1029.063, 1089.746, 1200]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['T_nf'], np.array([1118.458, 1200.000, 1029.063, 1089.354, 1200]), decimal=3)
 
         # Test max_gas_temp - Max gas temperature
         self.traveling._define_max_gas_temperature()
-        npt.assert_almost_equal(self.traveling.params['max_gas_temp'], np.array([1118.458, 1072.780, 1029.063, 1089.746, 1200]), decimal=3)
+        npt.assert_almost_equal(self.traveling.params['max_gas_temp'], np.array([1118.458, 1200.000, 1029.063, 1089.354, 1200]), decimal=3)
 
     def test_amend_long_duration_fires(self):
         self.traveling.perform_initial_calculations()
@@ -238,9 +241,9 @@ class TestTravelingISO16733(unittest.TestCase):
 
         # Test t=0 min
         answ = self.traveling.get_exposure(t=0, x_rel_loc=0.1,  subsample_mask=None)
-        npt.assert_almost_equal(answ, np.array([1118.458, 20, 20, 1089.746, 20]), decimal=3)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 20, 20]), decimal=3)
         answ = self.traveling.get_exposure(t=0, x_rel_loc=0.5, subsample_mask=None)
-        npt.assert_almost_equal(answ, np.array([20, 20, 20, 1089.746, 20]), decimal=3)
+        npt.assert_almost_equal(answ, np.array([20, 20, 20, 20, 20]), decimal=3)
         answ = self.traveling.get_exposure(t=0, x_rel_loc=0.9, subsample_mask=None)
         npt.assert_almost_equal(answ, np.array([20, 20, 20, 20, 20]), decimal=3)
 
@@ -262,7 +265,7 @@ class TestTravelingISO16733(unittest.TestCase):
 
         # est t=100 min with subsample mask
         answ = self.traveling.get_exposure(t=100, x_rel_loc=0.5, subsample_mask=[True, False, False, False, True])
-        npt.assert_almost_equal(answ, np.array([1118.458,  77.477]), decimal=3)
+        npt.assert_almost_equal(answ, np.array([1118.458,  77.476]), decimal=3)
 
 if __name__ == '__main__':
     unittest.main()
